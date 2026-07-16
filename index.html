@@ -22,19 +22,20 @@
     .progress-copy strong { color:var(--text); }
     .track { height:8px; overflow:hidden; background:#283149; border-radius:999px; }
     #bar { height:100%; width:0; border-radius:inherit; background:linear-gradient(90deg,var(--red),#ff777b); transition:width .25s ease; }
+    #bar.pulse { animation:progress-pop .38s ease; }
     #list { margin-top:26px; }
     .phase { display:flex; align-items:center; gap:12px; margin:38px 2px 11px; color:#ff797c; font-size:.82rem; letter-spacing:.13em; text-transform:uppercase; font-weight:900; }
     .phase:first-child { margin-top:8px; }
     .phase::after { content:""; height:1px; flex:1; background:linear-gradient(90deg,#ed1d2466,transparent); }
-    .row { display:grid; grid-template-columns:36px minmax(0,1fr) auto; align-items:center; gap:14px; min-height:72px; padding:13px 17px; border:1px solid var(--line); border-bottom:0; background:rgba(18,23,37,.83); transition:background .18s ease, transform .18s ease; }
+    .row { display:grid; grid-template-columns:36px minmax(0,1fr) auto; align-items:center; gap:14px; min-height:72px; padding:13px 17px; border:1px solid var(--line); border-bottom:0; background:rgba(18,23,37,.83); cursor:pointer; transition:background .18s ease, transform .18s ease, border-color .18s ease; }
     .row:first-of-type { border-radius:14px 14px 0 0; }
     .row:last-child { border-bottom:1px solid var(--line); border-radius:0 0 14px 14px; }
-    .row:hover { background:var(--panel-2); transform:translateX(3px); }
+    .row:hover, .row:focus-visible { background:var(--panel-2); transform:translateX(3px); border-color:#52627f; outline:0; }
     .row.done .title { color:#808aa0; text-decoration:line-through; text-decoration-thickness:1.5px; }
     .row.done { background:#101a22; }
     input { appearance:none; width:21px; height:21px; border:2px solid #66728a; border-radius:6px; display:grid; place-content:center; cursor:pointer; margin:0; transition:.15s ease; }
     input::before { content:"✓"; color:#09130f; font-size:15px; font-weight:1000; transform:scale(0); transition:.12s ease; }
-    input:checked { background:var(--green); border-color:var(--green); }
+    input:checked { background:var(--green); border-color:var(--green); animation:check-pop .28s cubic-bezier(.2,1.5,.5,1); }
     input:checked::before { transform:scale(1); }
     .title { font-size:1rem; font-weight:750; letter-spacing:-.015em; }
     .meta { display:flex; justify-content:flex-end; align-items:center; gap:10px; color:var(--muted); font-size:.8rem; text-align:right; }
@@ -42,7 +43,30 @@
     .date { white-space:nowrap; }
     .upcoming .title::after { content:"Upcoming"; display:inline-block; margin-left:9px; padding:3px 7px; border-radius:999px; vertical-align:middle; color:#e4c580; background:#392e18; font-size:.63rem; letter-spacing:.06em; text-transform:uppercase; }
     .empty { padding:36px; text-align:center; color:var(--muted); border:1px solid var(--line); border-radius:14px; background:var(--panel); }
-    footer { margin-top:28px; color:#7e899e; font-size:.78rem; line-height:1.5; }
+    .completion { display:none; align-items:center; gap:9px; width:max-content; max-width:100%; margin:22px auto -5px; padding:10px 14px; border:1px solid #f9c74f99; border-radius:999px; color:#fff0b5; background:linear-gradient(100deg,#382b10,#5a3711); box-shadow:0 0 30px #f9c74f33; font-size:.82rem; font-weight:850; letter-spacing:.03em; }
+    .completion.show { display:flex; animation:badge-in .45s cubic-bezier(.2,1.4,.4,1); }
+    footer { display:flex; justify-content:space-between; align-items:center; gap:16px; margin-top:28px; color:#7e899e; font-size:.78rem; line-height:1.5; }
+    footer p { margin:0; max-width:760px; }
+    .reset { flex:0 0 auto; border:1px solid #48536b; color:#bbc5d9; padding:8px 10px; font-size:.75rem; }
+    .reset:hover { border-color:#e05e64; color:#ffc6c8; background:#351b22; }
+    #toast { position:fixed; left:50%; bottom:26px; z-index:10; max-width:calc(100% - 32px); padding:12px 16px; border:1px solid #4de0a580; border-radius:999px; color:#d9ffed; background:#11251de8; box-shadow:0 12px 34px #0008; font-size:.9rem; font-weight:750; opacity:0; transform:translate(-50%,18px); pointer-events:none; transition:.25s ease; }
+    #toast.show { opacity:1; transform:translate(-50%,0); }
+    .modal-backdrop { position:fixed; inset:0; z-index:20; display:grid; place-items:center; padding:20px; background:#05070bb8; backdrop-filter:blur(7px); opacity:0; visibility:hidden; transition:.2s ease; }
+    .modal-backdrop.show { opacity:1; visibility:visible; }
+    .modal { width:min(100%,390px); padding:24px; border:1px solid #45516b; border-radius:20px; background:linear-gradient(145deg,#1c2436,#101622); box-shadow:0 26px 80px #000b; transform:translateY(12px) scale(.97); transition:.2s ease; }
+    .modal-backdrop.show .modal { transform:translateY(0) scale(1); }
+    .modal h2 { margin:0 0 8px; font-size:1.25rem; letter-spacing:-.03em; }
+    .modal p { margin:0; color:var(--muted); font-size:.92rem; line-height:1.5; }
+    .modal-actions { display:flex; justify-content:flex-end; gap:9px; margin-top:22px; }
+    .modal-actions button { border:1px solid #4a5772; }
+    .modal-actions .danger { color:#fff; border-color:#c53f45; background:#b5262d; }
+    .modal-actions .danger:hover { background:#d6343b; }
+    .spark { position:fixed; z-index:11; width:8px; height:8px; border-radius:2px; pointer-events:none; animation:spark .65s ease-out forwards; }
+    @keyframes check-pop { 50% { transform:scale(1.24) rotate(-7deg); } }
+    @keyframes progress-pop { 50% { filter:brightness(1.6); transform:scaleY(1.6); } }
+    @keyframes spark { to { transform:translate(var(--x),var(--y)) rotate(260deg); opacity:0; } }
+    @keyframes badge-in { from { transform:scale(.72); opacity:0; } to { transform:scale(1); opacity:1; } }
+    @media (prefers-reduced-motion:reduce) { *,*::before,*::after { animation-duration:.01ms!important; transition-duration:.01ms!important; scroll-behavior:auto!important; } }
     @media (max-width:650px) { main { width:min(100% - 22px,1080px); padding-top:34px; } .toolbar { top:6px; } .progress { width:100%; } .row { grid-template-columns:28px minmax(0,1fr); gap:10px; padding:13px; } .meta { grid-column:2; justify-content:flex-start; text-align:left; gap:7px; flex-wrap:wrap; margin-top:-6px; } .date { white-space:normal; } }
   </style>
 </head>
@@ -62,8 +86,23 @@
       </div>
     </section>
     <section id="list" aria-label="MCU titles"></section>
-    <footer>Release order is grouped by Marvel Studios phase. Chronological order is a continuous narrative watch order; time-travel and multiverse titles are positioned for a practical viewing flow.</footer>
+    <div class="completion" id="completion" role="status" aria-live="polite">🏆 MCU Complete — every title watched</div>
+    <footer>
+      <p>Release order is grouped by Marvel Studios phase. Chronological order is a continuous narrative watch order; time-travel and multiverse titles are positioned for a practical viewing flow.</p>
+      <button class="reset" id="reset" type="button">Reset progress</button>
+    </footer>
   </main>
+  <div id="toast" role="status" aria-live="polite"></div>
+  <div class="modal-backdrop" id="reset-modal" role="presentation">
+    <section class="modal" role="dialog" aria-modal="true" aria-labelledby="reset-title" aria-describedby="reset-copy">
+      <h2 id="reset-title">Reset your progress?</h2>
+      <p id="reset-copy">This will uncheck all watched titles on this device. You cannot undo it.</p>
+      <div class="modal-actions">
+        <button id="cancel-reset" type="button">Keep progress</button>
+        <button class="danger" id="confirm-reset" type="button">Reset everything</button>
+      </div>
+    </section>
+  </div>
 
   <script>
     // One source of truth: IDs keep your watched checks intact when you change order.
@@ -140,22 +179,65 @@
     const list = document.querySelector('#list');
     const count = document.querySelector('#count');
     const bar = document.querySelector('#bar');
+    const toast = document.querySelector('#toast');
+    const completion = document.querySelector('#completion');
+    const reset = document.querySelector('#reset');
+    const resetModal = document.querySelector('#reset-modal');
+    const cancelReset = document.querySelector('#cancel-reset');
+    const confirmReset = document.querySelector('#confirm-reset');
     let view = 'release';
+    let toastTimer;
 
     function save() { localStorage.setItem(storageKey, JSON.stringify([...watched])); }
     function updateProgress() {
       const completed = watched.size;
       count.textContent = `${completed} / ${data.length} watched`;
       bar.style.width = `${(completed / data.length) * 100}%`;
+      completion.classList.toggle('show', completed === data.length);
+    }
+    function celebrate(item, box) {
+      toast.textContent = `✓ Marked as watched: ${item.title}`;
+      toast.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toast.classList.remove('show'), 2500);
+      bar.classList.remove('pulse');
+      requestAnimationFrame(() => bar.classList.add('pulse'));
+      window.setTimeout(() => bar.classList.remove('pulse'), 400);
+      const colors = ['#ed1d24', '#5ce0a5', '#57b9ff', '#ffd15c'];
+      const rect = box.getBoundingClientRect();
+      for (let i = 0; i < 9; i++) {
+        const spark = document.createElement('i');
+        const angle = (Math.PI * 2 * i) / 9;
+        const distance = 24 + Math.random() * 28;
+        spark.className = 'spark';
+        spark.style.left = `${rect.left + rect.width / 2}px`;
+        spark.style.top = `${rect.top + rect.height / 2}px`;
+        spark.style.background = colors[i % colors.length];
+        spark.style.setProperty('--x', `${Math.cos(angle) * distance}px`);
+        spark.style.setProperty('--y', `${Math.sin(angle) * distance}px`);
+        document.body.append(spark);
+        spark.addEventListener('animationend', () => spark.remove());
+      }
     }
     function makeRow(item) {
       const row = document.createElement('article');
       row.className = `row${watched.has(item.id) ? ' done' : ''}${item.upcoming ? ' upcoming' : ''}`;
+      row.tabIndex = 0; row.setAttribute('role', 'checkbox'); row.setAttribute('aria-checked', watched.has(item.id));
       const box = document.createElement('input');
       box.type = 'checkbox'; box.checked = watched.has(item.id); box.setAttribute('aria-label', `Mark ${item.title} as watched`);
-      box.addEventListener('change', () => {
+      function toggleWatched() {
         box.checked ? watched.add(item.id) : watched.delete(item.id);
-        row.classList.toggle('done', box.checked); save(); updateProgress();
+        row.classList.toggle('done', box.checked); row.setAttribute('aria-checked', box.checked); save(); updateProgress();
+        if (box.checked) celebrate(item, box);
+      }
+      box.addEventListener('change', toggleWatched);
+      row.addEventListener('click', event => {
+        if (event.target === box) return;
+        box.checked = !box.checked; toggleWatched();
+      });
+      row.addEventListener('keydown', event => {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        event.preventDefault(); box.checked = !box.checked; toggleWatched();
       });
       const title = document.createElement('div'); title.className = 'title'; title.textContent = item.title;
       const meta = document.createElement('div'); meta.className = 'meta';
@@ -183,6 +265,23 @@
       document.querySelectorAll('[data-view]').forEach(b => b.classList.toggle('active', b === button));
       render();
     }));
+    function closeResetModal() { resetModal.classList.remove('show'); reset.focus(); }
+    function clearProgress() {
+      watched.clear(); save(); render();
+      toast.textContent = 'Progress reset — your next MCU run starts here.';
+      toast.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toast.classList.remove('show'), 2500);
+      closeResetModal();
+    }
+    reset.addEventListener('click', () => {
+      if (!watched.size) return;
+      resetModal.classList.add('show'); confirmReset.focus();
+    });
+    cancelReset.addEventListener('click', closeResetModal);
+    confirmReset.addEventListener('click', clearProgress);
+    resetModal.addEventListener('click', event => { if (event.target === resetModal) closeResetModal(); });
+    document.addEventListener('keydown', event => { if (event.key === 'Escape' && resetModal.classList.contains('show')) closeResetModal(); });
     render();
   </script>
 </body>
