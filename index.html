@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MCU Watchlist</title>
+  <style>
+    :root { color-scheme: dark; --bg:#090b12; --panel:#121725; --panel-2:#191f30; --line:#283149; --text:#f4f7ff; --muted:#9faac0; --red:#ed1d24; --blue:#57b9ff; --green:#5ce0a5; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif; color:var(--text); background:radial-gradient(circle at 12% -5%,#3a1121 0,transparent 31rem),radial-gradient(circle at 95% 15%,#112c50 0,transparent 28rem),var(--bg); }
+    main { width:min(1080px,calc(100% - 32px)); margin:0 auto; padding:56px 0 72px; }
+    .eyebrow { margin:0 0 8px; color:#ff6c70; font-size:.77rem; letter-spacing:.14em; font-weight:800; text-transform:uppercase; }
+    h1 { margin:0; font-size:clamp(2.2rem,6vw,4.5rem); line-height:.96; letter-spacing:-.06em; }
+    .intro { max-width:670px; margin:17px 0 28px; color:var(--muted); font-size:1rem; line-height:1.55; }
+    .toolbar { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:16px; padding:14px; border:1px solid var(--line); border-radius:18px; background:rgba(18,23,37,.84); backdrop-filter:blur(16px); position:sticky; top:12px; z-index:2; }
+    .controls { display:flex; gap:8px; }
+    button { appearance:none; border:0; color:var(--muted); background:transparent; cursor:pointer; border-radius:11px; padding:10px 13px; font:inherit; font-size:.9rem; font-weight:700; transition:.18s ease; }
+    button:hover { color:var(--text); background:#20283b; }
+    button.active { color:white; background:var(--red); box-shadow:0 5px 20px #ed1d244d; }
+    .progress { min-width:min(100%,250px); }
+    .progress-copy { display:flex; justify-content:space-between; gap:12px; margin-bottom:8px; font-size:.84rem; color:var(--muted); }
+    .progress-copy strong { color:var(--text); }
+    .track { height:8px; overflow:hidden; background:#283149; border-radius:999px; }
+    #bar { height:100%; width:0; border-radius:inherit; background:linear-gradient(90deg,var(--red),#ff777b); transition:width .25s ease; }
+    #list { margin-top:26px; }
+    .phase { display:flex; align-items:center; gap:12px; margin:38px 2px 11px; color:#ff797c; font-size:.82rem; letter-spacing:.13em; text-transform:uppercase; font-weight:900; }
+    .phase:first-child { margin-top:8px; }
+    .phase::after { content:""; height:1px; flex:1; background:linear-gradient(90deg,#ed1d2466,transparent); }
+    .row { display:grid; grid-template-columns:36px minmax(0,1fr) auto; align-items:center; gap:14px; min-height:72px; padding:13px 17px; border:1px solid var(--line); border-bottom:0; background:rgba(18,23,37,.83); transition:background .18s ease, transform .18s ease; }
+    .row:first-of-type { border-radius:14px 14px 0 0; }
+    .row:last-child { border-bottom:1px solid var(--line); border-radius:0 0 14px 14px; }
+    .row:hover { background:var(--panel-2); transform:translateX(3px); }
+    .row.done .title { color:#808aa0; text-decoration:line-through; text-decoration-thickness:1.5px; }
+    .row.done { background:#101a22; }
+    input { appearance:none; width:21px; height:21px; border:2px solid #66728a; border-radius:6px; display:grid; place-content:center; cursor:pointer; margin:0; transition:.15s ease; }
+    input::before { content:"✓"; color:#09130f; font-size:15px; font-weight:1000; transform:scale(0); transition:.12s ease; }
+    input:checked { background:var(--green); border-color:var(--green); }
+    input:checked::before { transform:scale(1); }
+    .title { font-size:1rem; font-weight:750; letter-spacing:-.015em; }
+    .meta { display:flex; justify-content:flex-end; align-items:center; gap:10px; color:var(--muted); font-size:.8rem; text-align:right; }
+    .tag { display:inline-flex; border:1px solid #3b4965; border-radius:999px; padding:3px 8px; color:#bfd2f2; font-size:.69rem; font-weight:800; letter-spacing:.04em; text-transform:uppercase; white-space:nowrap; }
+    .date { white-space:nowrap; }
+    .upcoming .title::after { content:"Upcoming"; display:inline-block; margin-left:9px; padding:3px 7px; border-radius:999px; vertical-align:middle; color:#e4c580; background:#392e18; font-size:.63rem; letter-spacing:.06em; text-transform:uppercase; }
+    .empty { padding:36px; text-align:center; color:var(--muted); border:1px solid var(--line); border-radius:14px; background:var(--panel); }
+    footer { margin-top:28px; color:#7e899e; font-size:.78rem; line-height:1.5; }
+    @media (max-width:650px) { main { width:min(100% - 22px,1080px); padding-top:34px; } .toolbar { top:6px; } .progress { width:100%; } .row { grid-template-columns:28px minmax(0,1fr); gap:10px; padding:13px; } .meta { grid-column:2; justify-content:flex-start; text-align:left; gap:7px; flex-wrap:wrap; margin-top:-6px; } .date { white-space:normal; } }
+  </style>
+</head>
+<body>
+  <main>
+    <p class="eyebrow">Marvel Studios • Major MCU watchlist</p>
+    <h1>MCU Watchlist</h1>
+    <p class="intro">Your personal tracker for the major movies, series, specials, and <em>I Am Groot</em>. Checks are saved in this browser.</p>
+    <section class="toolbar" aria-label="Watchlist controls">
+      <div class="controls" role="group" aria-label="Sort order">
+        <button class="active" data-view="release" type="button">Release order</button>
+        <button data-view="chronological" type="button">Chronological</button>
+      </div>
+      <div class="progress" aria-live="polite">
+        <div class="progress-copy"><span>Progress</span><strong id="count">0 / 0 watched</strong></div>
+        <div class="track"><div id="bar"></div></div>
+      </div>
+    </section>
+    <section id="list" aria-label="MCU titles"></section>
+    <footer>Release order is grouped by Marvel Studios phase. Chronological order is a continuous narrative watch order; time-travel and multiverse titles are positioned for a practical viewing flow.</footer>
+  </main>
+
+  <script>
+    // One source of truth: IDs keep your watched checks intact when you change order.
+    const data = [
+      {id:'iron-man', title:'Iron Man', type:'Movie', phase:'Phase 1', release:'2 May 2008', releaseOrder:1, chronologicalOrder:4},
+      {id:'incredible-hulk', title:'The Incredible Hulk', type:'Movie', phase:'Phase 1', release:'13 Jun 2008', releaseOrder:2, chronologicalOrder:6},
+      {id:'iron-man-2', title:'Iron Man 2', type:'Movie', phase:'Phase 1', release:'7 May 2010', releaseOrder:3, chronologicalOrder:5},
+      {id:'thor', title:'Thor', type:'Movie', phase:'Phase 1', release:'6 May 2011', releaseOrder:4, chronologicalOrder:7},
+      {id:'first-avenger', title:'Captain America: The First Avenger', type:'Movie', phase:'Phase 1', release:'22 Jul 2011', releaseOrder:5, chronologicalOrder:2},
+      {id:'avengers', title:'The Avengers', type:'Movie', phase:'Phase 1', release:'4 May 2012', releaseOrder:6, chronologicalOrder:8},
+      {id:'iron-man-3', title:'Iron Man 3', type:'Movie', phase:'Phase 2', release:'3 May 2013', releaseOrder:7, chronologicalOrder:10},
+      {id:'dark-world', title:'Thor: The Dark World', type:'Movie', phase:'Phase 2', release:'8 Nov 2013', releaseOrder:8, chronologicalOrder:9},
+      {id:'winter-soldier', title:'Captain America: The Winter Soldier', type:'Movie', phase:'Phase 2', release:'4 Apr 2014', releaseOrder:9, chronologicalOrder:11},
+      {id:'gotg', title:'Guardians of the Galaxy', type:'Movie', phase:'Phase 2', release:'1 Aug 2014', releaseOrder:10, chronologicalOrder:12},
+      {id:'ultron', title:'Avengers: Age of Ultron', type:'Movie', phase:'Phase 2', release:'1 May 2015', releaseOrder:11, chronologicalOrder:15},
+      {id:'ant-man', title:'Ant-Man', type:'Movie', phase:'Phase 2', release:'17 Jul 2015', releaseOrder:12, chronologicalOrder:16},
+      {id:'civil-war', title:'Captain America: Civil War', type:'Movie', phase:'Phase 3', release:'6 May 2016', releaseOrder:13, chronologicalOrder:17},
+      {id:'doctor-strange', title:'Doctor Strange', type:'Movie', phase:'Phase 3', release:'4 Nov 2016', releaseOrder:14, chronologicalOrder:19},
+      {id:'gotg-2', title:'Guardians of the Galaxy Vol. 2', type:'Movie', phase:'Phase 3', release:'5 May 2017', releaseOrder:15, chronologicalOrder:13},
+      {id:'homecoming', title:'Spider-Man: Homecoming', type:'Movie', phase:'Phase 3', release:'7 Jul 2017', releaseOrder:16, chronologicalOrder:21},
+      {id:'ragnarok', title:'Thor: Ragnarok', type:'Movie', phase:'Phase 3', release:'3 Nov 2017', releaseOrder:17, chronologicalOrder:22},
+      {id:'black-panther', title:'Black Panther', type:'Movie', phase:'Phase 3', release:'16 Feb 2018', releaseOrder:18, chronologicalOrder:20},
+      {id:'infinity-war', title:'Avengers: Infinity War', type:'Movie', phase:'Phase 3', release:'27 Apr 2018', releaseOrder:19, chronologicalOrder:23},
+      {id:'ant-man-wasp', title:'Ant-Man and the Wasp', type:'Movie', phase:'Phase 3', release:'6 Jul 2018', releaseOrder:20, chronologicalOrder:24},
+      {id:'captain-marvel', title:'Captain Marvel', type:'Movie', phase:'Phase 3', release:'8 Mar 2019', releaseOrder:21, chronologicalOrder:3},
+      {id:'endgame', title:'Avengers: Endgame', type:'Movie', phase:'Phase 3', release:'26 Apr 2019', releaseOrder:22, chronologicalOrder:25},
+      {id:'far-from-home', title:'Spider-Man: Far From Home', type:'Movie', phase:'Phase 3', release:'2 Jul 2019', releaseOrder:23, chronologicalOrder:34},
+      {id:'wandavision', title:'WandaVision', type:'Series', phase:'Phase 4', release:'15 Jan – 5 Mar 2021', releaseOrder:24, chronologicalOrder:30},
+      {id:'falcon-winter-soldier', title:'The Falcon and the Winter Soldier', type:'Series', phase:'Phase 4', release:'19 Mar – 23 Apr 2021', releaseOrder:25, chronologicalOrder:32},
+      {id:'loki-s1', title:'Loki — Season 1', type:'Series', phase:'Phase 4', release:'9 Jun – 14 Jul 2021', releaseOrder:26, chronologicalOrder:26},
+      {id:'black-widow', title:'Black Widow', type:'Movie', phase:'Phase 4', release:'9 Jul 2021', releaseOrder:27, chronologicalOrder:18},
+      {id:'what-if-s1', title:'What If...? — Season 1', type:'Animated', phase:'Phase 4', release:'11 Aug – 6 Oct 2021', releaseOrder:28, chronologicalOrder:28},
+      {id:'shang-chi', title:'Shang-Chi and the Legend of the Ten Rings', type:'Movie', phase:'Phase 4', release:'3 Sep 2021', releaseOrder:29, chronologicalOrder:31},
+      {id:'eternals', title:'Eternals', type:'Movie', phase:'Phase 4', release:'5 Nov 2021', releaseOrder:30, chronologicalOrder:33},
+      {id:'hawkeye', title:'Hawkeye', type:'Series', phase:'Phase 4', release:'24 Nov – 22 Dec 2021', releaseOrder:31, chronologicalOrder:37},
+      {id:'no-way-home', title:'Spider-Man: No Way Home', type:'Movie', phase:'Phase 4', release:'17 Dec 2021', releaseOrder:32, chronologicalOrder:35},
+      {id:'moon-knight', title:'Moon Knight', type:'Series', phase:'Phase 4', release:'30 Mar – 4 May 2022', releaseOrder:33, chronologicalOrder:39},
+      {id:'multiverse-madness', title:'Doctor Strange in the Multiverse of Madness', type:'Movie', phase:'Phase 4', release:'6 May 2022', releaseOrder:34, chronologicalOrder:36},
+      {id:'ms-marvel', title:'Ms. Marvel', type:'Series', phase:'Phase 4', release:'8 Jun – 13 Jul 2022', releaseOrder:35, chronologicalOrder:42},
+      {id:'love-thunder', title:'Thor: Love and Thunder', type:'Movie', phase:'Phase 4', release:'8 Jul 2022', releaseOrder:36, chronologicalOrder:44},
+      {id:'i-am-groot-s1', title:'I Am Groot — Season 1', type:'Shorts', phase:'Phase 4', release:'10 Aug 2022', releaseOrder:37, chronologicalOrder:14},
+      {id:'she-hulk', title:'She-Hulk: Attorney at Law', type:'Series', phase:'Phase 4', release:'18 Aug – 13 Oct 2022', releaseOrder:38, chronologicalOrder:41},
+      {id:'werewolf', title:'Werewolf by Night', type:'Special', phase:'Phase 4', release:'7 Oct 2022', releaseOrder:39, chronologicalOrder:46},
+      {id:'wakanda-forever', title:'Black Panther: Wakanda Forever', type:'Movie', phase:'Phase 4', release:'11 Nov 2022', releaseOrder:40, chronologicalOrder:40},
+      {id:'holiday-special', title:'The Guardians of the Galaxy Holiday Special', type:'Special', phase:'Phase 4', release:'25 Nov 2022', releaseOrder:41, chronologicalOrder:47},
+      {id:'quantumania', title:'Ant-Man and the Wasp: Quantumania', type:'Movie', phase:'Phase 5', release:'17 Feb 2023', releaseOrder:42, chronologicalOrder:48},
+      {id:'gotg-3', title:'Guardians of the Galaxy Vol. 3', type:'Movie', phase:'Phase 5', release:'5 May 2023', releaseOrder:43, chronologicalOrder:49},
+      {id:'secret-invasion', title:'Secret Invasion', type:'Series', phase:'Phase 5', release:'21 Jun – 26 Jul 2023', releaseOrder:44, chronologicalOrder:50},
+      {id:'i-am-groot-s2', title:'I Am Groot — Season 2', type:'Shorts', phase:'Phase 5', release:'6 Sep 2023', releaseOrder:45, chronologicalOrder:14.1},
+      {id:'loki-s2', title:'Loki — Season 2', type:'Series', phase:'Phase 5', release:'5 Oct – 9 Nov 2023', releaseOrder:46, chronologicalOrder:27},
+      {id:'marvels', title:'The Marvels', type:'Movie', phase:'Phase 5', release:'10 Nov 2023', releaseOrder:47, chronologicalOrder:51},
+      {id:'what-if-s2', title:'What If...? — Season 2', type:'Animated', phase:'Phase 5', release:'22 – 30 Dec 2023', releaseOrder:48, chronologicalOrder:28.1},
+      {id:'echo', title:'Echo', type:'Series', phase:'Phase 5', release:'9 Jan 2024', releaseOrder:49, chronologicalOrder:40.1},
+      {id:'deadpool-wolverine', title:'Deadpool & Wolverine', type:'Movie', phase:'Phase 5', release:'26 Jul 2024', releaseOrder:50, chronologicalOrder:29},
+      {id:'agatha', title:'Agatha All Along', type:'Series', phase:'Phase 5', release:'18 Sep – 30 Oct 2024', releaseOrder:51, chronologicalOrder:52},
+      {id:'what-if-s3', title:'What If...? — Season 3', type:'Animated', phase:'Phase 5', release:'22 – 29 Dec 2024', releaseOrder:52, chronologicalOrder:28.2},
+      {id:'brave-new-world', title:'Captain America: Brave New World', type:'Movie', phase:'Phase 5', release:'14 Feb 2025', releaseOrder:53, chronologicalOrder:54},
+      {id:'daredevil-s1', title:'Daredevil: Born Again — Season 1', type:'Series', phase:'Phase 5', release:'4 Mar – 15 Apr 2025', releaseOrder:54, chronologicalOrder:53},
+      {id:'thunderbolts', title:'Thunderbolts*', type:'Movie', phase:'Phase 5', release:'2 May 2025', releaseOrder:55, chronologicalOrder:55},
+      {id:'ironheart', title:'Ironheart', type:'Series', phase:'Phase 5', release:'24 Jun – 1 Jul 2025', releaseOrder:56, chronologicalOrder:43},
+      {id:'fantastic-four', title:'The Fantastic Four: First Steps', type:'Movie', phase:'Phase 6', release:'25 Jul 2025', releaseOrder:57, chronologicalOrder:56},
+      {id:'eyes-wakanda', title:'Eyes of Wakanda', type:'Animated', phase:'Phase 6', release:'1 Aug 2025', releaseOrder:58, chronologicalOrder:1},
+      {id:'marvel-zombies', title:'Marvel Zombies', type:'Animated', phase:'Phase 6', release:'24 Sep 2025', releaseOrder:59, chronologicalOrder:28.3},
+      {id:'wonder-man', title:'Wonder Man', type:'Series', phase:'Phase 6', release:'27 Jan 2026', releaseOrder:60, chronologicalOrder:57},
+      {id:'daredevil-s2', title:'Daredevil: Born Again — Season 2', type:'Series', phase:'Phase 6', release:'24 Mar – 28 Apr 2026', releaseOrder:61, chronologicalOrder:58},
+      {id:'spider-man-bnd', title:'Spider-Man: Brand New Day', type:'Movie', phase:'Phase 6', release:'31 Jul 2026', releaseOrder:62, chronologicalOrder:60, upcoming:true},
+      {id:'vision-quest', title:'VisionQuest', type:'Series', phase:'Phase 6', release:'14 Oct 2026', releaseOrder:63, chronologicalOrder:59, upcoming:true},
+      {id:'doomsday', title:'Avengers: Doomsday', type:'Movie', phase:'Phase 6', release:'18 Dec 2026', releaseOrder:64, chronologicalOrder:61, upcoming:true},
+      {id:'secret-wars', title:'Avengers: Secret Wars', type:'Movie', phase:'Phase 6', release:'17 Dec 2027', releaseOrder:65, chronologicalOrder:62, upcoming:true}
+    ];
+
+    const storageKey = 'mcu-watchlist-v1';
+    const watched = new Set(JSON.parse(localStorage.getItem(storageKey) || '[]'));
+    const list = document.querySelector('#list');
+    const count = document.querySelector('#count');
+    const bar = document.querySelector('#bar');
+    let view = 'release';
+
+    function save() { localStorage.setItem(storageKey, JSON.stringify([...watched])); }
+    function updateProgress() {
+      const completed = watched.size;
+      count.textContent = `${completed} / ${data.length} watched`;
+      bar.style.width = `${(completed / data.length) * 100}%`;
+    }
+    function makeRow(item) {
+      const row = document.createElement('article');
+      row.className = `row${watched.has(item.id) ? ' done' : ''}${item.upcoming ? ' upcoming' : ''}`;
+      const box = document.createElement('input');
+      box.type = 'checkbox'; box.checked = watched.has(item.id); box.setAttribute('aria-label', `Mark ${item.title} as watched`);
+      box.addEventListener('change', () => {
+        box.checked ? watched.add(item.id) : watched.delete(item.id);
+        row.classList.toggle('done', box.checked); save(); updateProgress();
+      });
+      const title = document.createElement('div'); title.className = 'title'; title.textContent = item.title;
+      const meta = document.createElement('div'); meta.className = 'meta';
+      meta.innerHTML = `<span class="tag">${item.type}</span><span class="date">${item.release}</span>`;
+      row.append(box, title, meta); return row;
+    }
+    function render() {
+      list.replaceChildren();
+      const ordered = [...data].sort((a,b) => a[`${view}Order`] - b[`${view}Order`]);
+      if (view === 'release') {
+        let phase = null;
+        ordered.forEach(item => {
+          if (item.phase !== phase) {
+            phase = item.phase;
+            const heading = document.createElement('div'); heading.className = 'phase'; heading.textContent = phase;
+            list.append(heading);
+          }
+          list.append(makeRow(item));
+        });
+      } else ordered.forEach(item => list.append(makeRow(item)));
+      updateProgress();
+    }
+    document.querySelectorAll('[data-view]').forEach(button => button.addEventListener('click', () => {
+      view = button.dataset.view;
+      document.querySelectorAll('[data-view]').forEach(b => b.classList.toggle('active', b === button));
+      render();
+    }));
+    render();
+  </script>
+</body>
+</html>
