@@ -1,12 +1,12 @@
 # MCU Watchlist 🦸
 
-Keeping up with the MCU gets messy fast — this is a clean, interactive checklist for the major movies, series, specials, animated shows, and *I Am Groot*. Track what you have watched, see your progress, and switch between release and chronological order whenever you want.
+A clean, interactive tracker for the major Marvel Cinematic Universe releases. Keep track of what you have watched, follow your progress, and explore the MCU in either release or chronological order.
 
 🔗 [Visit the MCU Watchlist](https://dipdagod.github.io/mcu-watchlist/)
 
 ## Features
 
-* 🎬 **65 Major MCU Entries** – Movies, Disney+ series, specials, animation, and both *I Am Groot* seasons
+* 🎬 **65 Major MCU Entries** – Movies, series, specials, and animated releases in one focused list
 * 🗓️ **Release Order** – Browse titles grouped by Marvel Studios phase
 * ⏳ **Chronological Order** – Follow a practical in-universe viewing order
 * ✅ **Watch Progress** – Tick off titles as you finish them and watch the progress bar grow
