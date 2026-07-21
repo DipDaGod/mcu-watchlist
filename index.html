@@ -1,283 +1,938 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>MCU Watchlist</title>
-  <style>
-    :root { color-scheme: dark; --bg:#090b12; --panel:#121725; --panel-2:#191f30; --line:#283149; --text:#f4f7ff; --muted:#9faac0; --red:#ed1d24; --blue:#57b9ff; --green:#5ce0a5; }
-    * { box-sizing:border-box; }
-    body { margin:0; min-height:100vh; font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif; color:var(--text); background:radial-gradient(circle at 12% -5%,#3a1121 0,transparent 31rem),radial-gradient(circle at 95% 15%,#112c50 0,transparent 28rem),var(--bg); }
-    main { width:min(1080px,calc(100% - 32px)); margin:0 auto; padding:56px 0 72px; }
-    .eyebrow { margin:0 0 8px; color:#ff6c70; font-size:.77rem; letter-spacing:.14em; font-weight:800; text-transform:uppercase; }
-    h1 { margin:0; font-size:clamp(2.2rem,6vw,4.5rem); line-height:.96; letter-spacing:-.06em; }
-    .intro { max-width:670px; margin:17px 0 28px; color:var(--muted); font-size:1rem; line-height:1.55; }
-    .toolbar { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:16px; padding:14px; border:1px solid var(--line); border-radius:18px; background:rgba(18,23,37,.84); backdrop-filter:blur(16px); position:sticky; top:12px; z-index:2; }
-    .controls { display:flex; gap:8px; }
-    button { appearance:none; border:0; color:var(--muted); background:transparent; cursor:pointer; border-radius:11px; padding:10px 13px; font:inherit; font-size:.9rem; font-weight:700; transition:.18s ease; }
-    button:hover { color:var(--text); background:#20283b; }
-    button.active { color:white; background:var(--red); box-shadow:0 5px 20px #ed1d244d; }
-    .progress { min-width:min(100%,250px); }
-    .progress-copy { display:flex; justify-content:space-between; gap:12px; margin-bottom:8px; font-size:.84rem; color:var(--muted); }
-    .progress-copy strong { color:var(--text); }
-    .track { height:8px; overflow:hidden; background:#283149; border-radius:999px; }
-    #bar { height:100%; width:0; border-radius:inherit; background:linear-gradient(90deg,var(--red),#ff777b); transition:width .25s ease; }
-    #bar.pulse { animation:progress-pop .38s ease; }
-    #list { margin-top:26px; }
-    .phase { display:flex; align-items:center; gap:12px; margin:38px 2px 11px; color:#ff797c; font-size:.82rem; letter-spacing:.13em; text-transform:uppercase; font-weight:900; }
-    .phase:first-child { margin-top:8px; }
-    .phase::after { content:""; height:1px; flex:1; background:linear-gradient(90deg,#ed1d2466,transparent); }
-    .row { display:grid; width:100%; grid-template-columns:36px minmax(0,1fr) auto; align-items:center; gap:14px; min-height:72px; padding:13px 17px; border:1px solid var(--line); border-bottom:0; color:inherit; text-align:left; background:rgba(18,23,37,.83); cursor:pointer; transition:background .18s ease, transform .18s ease, border-color .18s ease; }
-    .row:first-of-type { border-radius:14px 14px 0 0; }
-    .row:last-child { border-bottom:1px solid var(--line); border-radius:0 0 14px 14px; }
-    .row:hover, .row:focus-visible { background:var(--panel-2); transform:translateX(3px); border-color:#52627f; outline:0; }
-    .row.done .title { color:#808aa0; text-decoration:line-through; text-decoration-thickness:1.5px; }
-    .row.done { background:#101a22; }
-    .indicator { width:21px; height:21px; border:2px solid #66728a; border-radius:6px; display:grid; place-content:center; transition:.15s ease; }
-    .indicator::before { content:"✓"; color:#09130f; font-size:15px; font-weight:1000; transform:scale(0); transition:.12s ease; }
-    .row.done .indicator { background:var(--green); border-color:var(--green); animation:check-pop .28s cubic-bezier(.2,1.5,.5,1); }
-    .row.done .indicator::before { transform:scale(1); }
-    .title { font-size:1rem; font-weight:750; letter-spacing:-.015em; }
-    .meta { display:flex; justify-content:flex-end; align-items:center; gap:10px; color:var(--muted); font-size:.8rem; text-align:right; }
-    .tag { display:inline-flex; border:1px solid #3b4965; border-radius:999px; padding:3px 8px; color:#bfd2f2; font-size:.69rem; font-weight:800; letter-spacing:.04em; text-transform:uppercase; white-space:nowrap; }
-    .date { white-space:nowrap; }
-    .upcoming .title::after { content:"Upcoming"; display:inline-block; margin-left:9px; padding:3px 7px; border-radius:999px; vertical-align:middle; color:#e4c580; background:#392e18; font-size:.63rem; letter-spacing:.06em; text-transform:uppercase; }
-    .empty { padding:36px; text-align:center; color:var(--muted); border:1px solid var(--line); border-radius:14px; background:var(--panel); }
-    .completion { display:none; align-items:center; gap:9px; width:max-content; max-width:100%; margin:22px auto -5px; padding:10px 14px; border:1px solid #f9c74f99; border-radius:999px; color:#fff0b5; background:linear-gradient(100deg,#382b10,#5a3711); box-shadow:0 0 30px #f9c74f33; font-size:.82rem; font-weight:850; letter-spacing:.03em; }
-    .completion.show { display:flex; animation:badge-in .45s cubic-bezier(.2,1.4,.4,1); }
-    footer { display:flex; justify-content:space-between; align-items:center; gap:16px; margin-top:28px; color:#7e899e; font-size:.78rem; line-height:1.5; }
-    footer p { margin:0; max-width:760px; }
-    .reset { flex:0 0 auto; border:1px solid #48536b; color:#bbc5d9; padding:8px 10px; font-size:.75rem; }
-    .reset:hover { border-color:#e05e64; color:#ffc6c8; background:#351b22; }
-    #toast { position:fixed; left:50%; bottom:26px; z-index:10; max-width:calc(100% - 32px); padding:12px 16px; border:1px solid #4de0a580; border-radius:999px; color:#d9ffed; background:#11251de8; box-shadow:0 12px 34px #0008; font-size:.9rem; font-weight:750; opacity:0; transform:translate(-50%,18px); pointer-events:none; transition:.25s ease; }
-    #toast.show { opacity:1; transform:translate(-50%,0); }
-    .modal-backdrop { position:fixed; inset:0; z-index:20; display:grid; place-items:center; padding:20px; background:#05070bb8; backdrop-filter:blur(7px); opacity:0; visibility:hidden; transition:.2s ease; }
-    .modal-backdrop.show { opacity:1; visibility:visible; }
-    .modal { width:min(100%,390px); padding:24px; border:1px solid #45516b; border-radius:20px; background:linear-gradient(145deg,#1c2436,#101622); box-shadow:0 26px 80px #000b; transform:translateY(12px) scale(.97); transition:.2s ease; }
-    .modal-backdrop.show .modal { transform:translateY(0) scale(1); }
-    .modal h2 { margin:0 0 8px; font-size:1.25rem; letter-spacing:-.03em; }
-    .modal p { margin:0; color:var(--muted); font-size:.92rem; line-height:1.5; }
-    .modal-actions { display:flex; justify-content:flex-end; gap:9px; margin-top:22px; }
-    .modal-actions button { border:1px solid #4a5772; }
-    .modal-actions .danger { color:#fff; border-color:#c53f45; background:#b5262d; }
-    .modal-actions .danger:hover { background:#d6343b; }
-    .spark { position:fixed; z-index:11; width:8px; height:8px; border-radius:2px; pointer-events:none; animation:spark .65s ease-out forwards; }
-    @keyframes check-pop { 50% { transform:scale(1.24) rotate(-7deg); } }
-    @keyframes progress-pop { 50% { filter:brightness(1.6); transform:scaleY(1.6); } }
-    @keyframes spark { to { transform:translate(var(--x),var(--y)) rotate(260deg); opacity:0; } }
-    @keyframes badge-in { from { transform:scale(.72); opacity:0; } to { transform:scale(1); opacity:1; } }
-    @media (prefers-reduced-motion:reduce) { *,*::before,*::after { animation-duration:.01ms!important; transition-duration:.01ms!important; scroll-behavior:auto!important; } }
-    @media (max-width:650px) { main { width:min(100% - 22px,1080px); padding-top:34px; } .toolbar { top:6px; } .progress { width:100%; } .row { grid-template-columns:28px minmax(0,1fr); gap:10px; padding:13px; } .meta { grid-column:2; justify-content:flex-start; text-align:left; gap:7px; flex-wrap:wrap; margin-top:-6px; } .date { white-space:normal; } }
-  </style>
-</head>
-<body>
-  <main>
-    <p class="eyebrow">Marvel Studios • Major MCU watchlist</p>
-    <h1>MCU Watchlist</h1>
-    <p class="intro">Your personal tracker for the major movies, series, specials, and <em>I Am Groot</em>. Checks are saved in this browser.</p>
-    <section class="toolbar" aria-label="Watchlist controls">
-      <div class="controls" role="group" aria-label="Sort order">
-        <button class="active" data-view="release" type="button">Release order</button>
-        <button data-view="chronological" type="button">Chronological</button>
-      </div>
-      <div class="progress" aria-live="polite">
-        <div class="progress-copy"><span>Progress</span><strong id="count">0 / 0 watched</strong></div>
-        <div class="track"><div id="bar"></div></div>
-      </div>
-    </section>
-    <section id="list" aria-label="MCU titles"></section>
-    <div class="completion" id="completion" role="status" aria-live="polite">🏆 MCU Complete — every title watched</div>
-    <footer>
-      <p>Release order is grouped by Marvel Studios phase. Chronological order is a continuous narrative watch order; time-travel and multiverse titles are positioned for a practical viewing flow.</p>
-      <button class="reset" id="reset" type="button">Reset progress</button>
-    </footer>
-  </main>
-  <div id="toast" role="status" aria-live="polite"></div>
-  <div class="modal-backdrop" id="reset-modal" role="presentation">
-    <section class="modal" role="dialog" aria-modal="true" aria-labelledby="reset-title" aria-describedby="reset-copy">
-      <h2 id="reset-title">Reset your progress?</h2>
-      <p id="reset-copy">This will uncheck all watched titles on this device. You cannot undo it.</p>
-      <div class="modal-actions">
-        <button id="cancel-reset" type="button">Keep progress</button>
-        <button class="danger" id="confirm-reset" type="button">Reset everything</button>
-      </div>
-    </section>
-  </div>
+<!DOCTYPE html>
 
-  <script>
-    // One source of truth: IDs keep your watched checks intact when you change order.
-    const data = [
-      {id:'iron-man', title:'Iron Man', type:'Movie', phase:'Phase 1', release:'2 May 2008', releaseOrder:1, chronologicalOrder:4},
-      {id:'incredible-hulk', title:'The Incredible Hulk', type:'Movie', phase:'Phase 1', release:'13 Jun 2008', releaseOrder:2, chronologicalOrder:6},
-      {id:'iron-man-2', title:'Iron Man 2', type:'Movie', phase:'Phase 1', release:'7 May 2010', releaseOrder:3, chronologicalOrder:5},
-      {id:'thor', title:'Thor', type:'Movie', phase:'Phase 1', release:'6 May 2011', releaseOrder:4, chronologicalOrder:7},
-      {id:'first-avenger', title:'Captain America: The First Avenger', type:'Movie', phase:'Phase 1', release:'22 Jul 2011', releaseOrder:5, chronologicalOrder:2},
-      {id:'avengers', title:'The Avengers', type:'Movie', phase:'Phase 1', release:'4 May 2012', releaseOrder:6, chronologicalOrder:8},
-      {id:'iron-man-3', title:'Iron Man 3', type:'Movie', phase:'Phase 2', release:'3 May 2013', releaseOrder:7, chronologicalOrder:10},
-      {id:'dark-world', title:'Thor: The Dark World', type:'Movie', phase:'Phase 2', release:'8 Nov 2013', releaseOrder:8, chronologicalOrder:9},
-      {id:'winter-soldier', title:'Captain America: The Winter Soldier', type:'Movie', phase:'Phase 2', release:'4 Apr 2014', releaseOrder:9, chronologicalOrder:11},
-      {id:'gotg', title:'Guardians of the Galaxy', type:'Movie', phase:'Phase 2', release:'1 Aug 2014', releaseOrder:10, chronologicalOrder:12},
-      {id:'ultron', title:'Avengers: Age of Ultron', type:'Movie', phase:'Phase 2', release:'1 May 2015', releaseOrder:11, chronologicalOrder:15},
-      {id:'ant-man', title:'Ant-Man', type:'Movie', phase:'Phase 2', release:'17 Jul 2015', releaseOrder:12, chronologicalOrder:16},
-      {id:'civil-war', title:'Captain America: Civil War', type:'Movie', phase:'Phase 3', release:'6 May 2016', releaseOrder:13, chronologicalOrder:17},
-      {id:'doctor-strange', title:'Doctor Strange', type:'Movie', phase:'Phase 3', release:'4 Nov 2016', releaseOrder:14, chronologicalOrder:19},
-      {id:'gotg-2', title:'Guardians of the Galaxy Vol. 2', type:'Movie', phase:'Phase 3', release:'5 May 2017', releaseOrder:15, chronologicalOrder:13},
-      {id:'homecoming', title:'Spider-Man: Homecoming', type:'Movie', phase:'Phase 3', release:'7 Jul 2017', releaseOrder:16, chronologicalOrder:21},
-      {id:'ragnarok', title:'Thor: Ragnarok', type:'Movie', phase:'Phase 3', release:'3 Nov 2017', releaseOrder:17, chronologicalOrder:22},
-      {id:'black-panther', title:'Black Panther', type:'Movie', phase:'Phase 3', release:'16 Feb 2018', releaseOrder:18, chronologicalOrder:20},
-      {id:'infinity-war', title:'Avengers: Infinity War', type:'Movie', phase:'Phase 3', release:'27 Apr 2018', releaseOrder:19, chronologicalOrder:23},
-      {id:'ant-man-wasp', title:'Ant-Man and the Wasp', type:'Movie', phase:'Phase 3', release:'6 Jul 2018', releaseOrder:20, chronologicalOrder:24},
-      {id:'captain-marvel', title:'Captain Marvel', type:'Movie', phase:'Phase 3', release:'8 Mar 2019', releaseOrder:21, chronologicalOrder:3},
-      {id:'endgame', title:'Avengers: Endgame', type:'Movie', phase:'Phase 3', release:'26 Apr 2019', releaseOrder:22, chronologicalOrder:25},
-      {id:'far-from-home', title:'Spider-Man: Far From Home', type:'Movie', phase:'Phase 3', release:'2 Jul 2019', releaseOrder:23, chronologicalOrder:34},
-      {id:'wandavision', title:'WandaVision', type:'Series', phase:'Phase 4', release:'15 Jan – 5 Mar 2021', releaseOrder:24, chronologicalOrder:30},
-      {id:'falcon-winter-soldier', title:'The Falcon and the Winter Soldier', type:'Series', phase:'Phase 4', release:'19 Mar – 23 Apr 2021', releaseOrder:25, chronologicalOrder:32},
-      {id:'loki-s1', title:'Loki — Season 1', type:'Series', phase:'Phase 4', release:'9 Jun – 14 Jul 2021', releaseOrder:26, chronologicalOrder:26},
-      {id:'black-widow', title:'Black Widow', type:'Movie', phase:'Phase 4', release:'9 Jul 2021', releaseOrder:27, chronologicalOrder:18},
-      {id:'what-if-s1', title:'What If...? — Season 1', type:'Animated', phase:'Phase 4', release:'11 Aug – 6 Oct 2021', releaseOrder:28, chronologicalOrder:28},
-      {id:'shang-chi', title:'Shang-Chi and the Legend of the Ten Rings', type:'Movie', phase:'Phase 4', release:'3 Sep 2021', releaseOrder:29, chronologicalOrder:31},
-      {id:'eternals', title:'Eternals', type:'Movie', phase:'Phase 4', release:'5 Nov 2021', releaseOrder:30, chronologicalOrder:33},
-      {id:'hawkeye', title:'Hawkeye', type:'Series', phase:'Phase 4', release:'24 Nov – 22 Dec 2021', releaseOrder:31, chronologicalOrder:37},
-      {id:'no-way-home', title:'Spider-Man: No Way Home', type:'Movie', phase:'Phase 4', release:'17 Dec 2021', releaseOrder:32, chronologicalOrder:35},
-      {id:'moon-knight', title:'Moon Knight', type:'Series', phase:'Phase 4', release:'30 Mar – 4 May 2022', releaseOrder:33, chronologicalOrder:39},
-      {id:'multiverse-madness', title:'Doctor Strange in the Multiverse of Madness', type:'Movie', phase:'Phase 4', release:'6 May 2022', releaseOrder:34, chronologicalOrder:36},
-      {id:'ms-marvel', title:'Ms. Marvel', type:'Series', phase:'Phase 4', release:'8 Jun – 13 Jul 2022', releaseOrder:35, chronologicalOrder:42},
-      {id:'love-thunder', title:'Thor: Love and Thunder', type:'Movie', phase:'Phase 4', release:'8 Jul 2022', releaseOrder:36, chronologicalOrder:44},
-      {id:'i-am-groot-s1', title:'I Am Groot — Season 1', type:'Shorts', phase:'Phase 4', release:'10 Aug 2022', releaseOrder:37, chronologicalOrder:14},
-      {id:'she-hulk', title:'She-Hulk: Attorney at Law', type:'Series', phase:'Phase 4', release:'18 Aug – 13 Oct 2022', releaseOrder:38, chronologicalOrder:41},
-      {id:'werewolf', title:'Werewolf by Night', type:'Special', phase:'Phase 4', release:'7 Oct 2022', releaseOrder:39, chronologicalOrder:46},
-      {id:'wakanda-forever', title:'Black Panther: Wakanda Forever', type:'Movie', phase:'Phase 4', release:'11 Nov 2022', releaseOrder:40, chronologicalOrder:40},
-      {id:'holiday-special', title:'The Guardians of the Galaxy Holiday Special', type:'Special', phase:'Phase 4', release:'25 Nov 2022', releaseOrder:41, chronologicalOrder:47},
-      {id:'quantumania', title:'Ant-Man and the Wasp: Quantumania', type:'Movie', phase:'Phase 5', release:'17 Feb 2023', releaseOrder:42, chronologicalOrder:48},
-      {id:'gotg-3', title:'Guardians of the Galaxy Vol. 3', type:'Movie', phase:'Phase 5', release:'5 May 2023', releaseOrder:43, chronologicalOrder:49},
-      {id:'secret-invasion', title:'Secret Invasion', type:'Series', phase:'Phase 5', release:'21 Jun – 26 Jul 2023', releaseOrder:44, chronologicalOrder:50},
-      {id:'i-am-groot-s2', title:'I Am Groot — Season 2', type:'Shorts', phase:'Phase 5', release:'6 Sep 2023', releaseOrder:45, chronologicalOrder:14.1},
-      {id:'loki-s2', title:'Loki — Season 2', type:'Series', phase:'Phase 5', release:'5 Oct – 9 Nov 2023', releaseOrder:46, chronologicalOrder:27},
-      {id:'marvels', title:'The Marvels', type:'Movie', phase:'Phase 5', release:'10 Nov 2023', releaseOrder:47, chronologicalOrder:51},
-      {id:'what-if-s2', title:'What If...? — Season 2', type:'Animated', phase:'Phase 5', release:'22 – 30 Dec 2023', releaseOrder:48, chronologicalOrder:28.1},
-      {id:'echo', title:'Echo', type:'Series', phase:'Phase 5', release:'9 Jan 2024', releaseOrder:49, chronologicalOrder:40.1},
-      {id:'deadpool-wolverine', title:'Deadpool & Wolverine', type:'Movie', phase:'Phase 5', release:'26 Jul 2024', releaseOrder:50, chronologicalOrder:29},
-      {id:'agatha', title:'Agatha All Along', type:'Series', phase:'Phase 5', release:'18 Sep – 30 Oct 2024', releaseOrder:51, chronologicalOrder:52},
-      {id:'what-if-s3', title:'What If...? — Season 3', type:'Animated', phase:'Phase 5', release:'22 – 29 Dec 2024', releaseOrder:52, chronologicalOrder:28.2},
-      {id:'brave-new-world', title:'Captain America: Brave New World', type:'Movie', phase:'Phase 5', release:'14 Feb 2025', releaseOrder:53, chronologicalOrder:54},
-      {id:'daredevil-s1', title:'Daredevil: Born Again — Season 1', type:'Series', phase:'Phase 5', release:'4 Mar – 15 Apr 2025', releaseOrder:54, chronologicalOrder:53},
-      {id:'thunderbolts', title:'Thunderbolts*', type:'Movie', phase:'Phase 5', release:'2 May 2025', releaseOrder:55, chronologicalOrder:55},
-      {id:'ironheart', title:'Ironheart', type:'Series', phase:'Phase 5', release:'24 Jun – 1 Jul 2025', releaseOrder:56, chronologicalOrder:43},
-      {id:'fantastic-four', title:'The Fantastic Four: First Steps', type:'Movie', phase:'Phase 6', release:'25 Jul 2025', releaseOrder:57, chronologicalOrder:56},
-      {id:'eyes-wakanda', title:'Eyes of Wakanda', type:'Animated', phase:'Phase 6', release:'1 Aug 2025', releaseOrder:58, chronologicalOrder:1},
-      {id:'marvel-zombies', title:'Marvel Zombies', type:'Animated', phase:'Phase 6', release:'24 Sep 2025', releaseOrder:59, chronologicalOrder:28.3},
-      {id:'wonder-man', title:'Wonder Man', type:'Series', phase:'Phase 6', release:'27 Jan 2026', releaseOrder:60, chronologicalOrder:57},
-      {id:'daredevil-s2', title:'Daredevil: Born Again — Season 2', type:'Series', phase:'Phase 6', release:'24 Mar – 28 Apr 2026', releaseOrder:61, chronologicalOrder:58},
-      {id:'spider-man-bnd', title:'Spider-Man: Brand New Day', type:'Movie', phase:'Phase 6', release:'31 Jul 2026', releaseOrder:62, chronologicalOrder:60, upcoming:true},
-      {id:'vision-quest', title:'VisionQuest', type:'Series', phase:'Phase 6', release:'14 Oct 2026', releaseOrder:63, chronologicalOrder:59, upcoming:true},
-      {id:'doomsday', title:'Avengers: Doomsday', type:'Movie', phase:'Phase 6', release:'18 Dec 2026', releaseOrder:64, chronologicalOrder:61, upcoming:true},
-      {id:'secret-wars', title:'Avengers: Secret Wars', type:'Movie', phase:'Phase 6', release:'17 Dec 2027', releaseOrder:65, chronologicalOrder:62, upcoming:true}
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>S.H.I.E.L.D. DATABASE | MCU WATCHLIST</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;800;900&amp;family=Geist:wght@500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind Config Verbatim -->
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-primary-fixed": "#410004",
+                    "surface-container-lowest": "#180a09",
+                    "surface-container-highest": "#42302f",
+                    "on-secondary-fixed-variant": "#004395",
+                    "secondary-fixed-dim": "#adc6ff",
+                    "on-tertiary": "#003736",
+                    "on-secondary-container": "#e6ecff",
+                    "surface-container-high": "#372624",
+                    "on-tertiary-fixed": "#00201f",
+                    "surface": "#1e100e",
+                    "surface-bright": "#473533",
+                    "on-surface-variant": "#e4beba",
+                    "secondary": "#adc6ff",
+                    "primary": "#ffb3ad",
+                    "tertiary-container": "#24a09d",
+                    "on-primary-container": "#5c0008",
+                    "primary-fixed": "#ffdad7",
+                    "surface-variant": "#42302f",
+                    "primary-fixed-dim": "#ffb3ad",
+                    "secondary-fixed": "#d8e2ff",
+                    "background": "#1e100e",
+                    "primary-container": "#ff5451",
+                    "surface-container-low": "#271816",
+                    "on-secondary": "#002e6a",
+                    "on-primary": "#68000a",
+                    "on-error": "#690005",
+                    "surface-tint": "#ffb3ad",
+                    "inverse-on-surface": "#3e2c2b",
+                    "inverse-primary": "#b91a24",
+                    "on-surface": "#f9dcd9",
+                    "inverse-surface": "#f9dcd9",
+                    "outline-variant": "#5b403e",
+                    "surface-dim": "#1e100e",
+                    "error-container": "#93000a",
+                    "surface-container": "#2c1c1a",
+                    "error": "#ffb4ab",
+                    "outline": "#ab8986",
+                    "on-error-container": "#ffdad6",
+                    "on-secondary-fixed": "#001a42",
+                    "tertiary-fixed-dim": "#69d8d4",
+                    "on-tertiary-container": "#00302e",
+                    "tertiary-fixed": "#87f4f0",
+                    "tertiary": "#69d8d4",
+                    "on-primary-fixed-variant": "#930013",
+                    "on-background": "#f9dcd9",
+                    "on-tertiary-fixed-variant": "#00504e",
+                    "secondary-container": "#0566d9"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "spacing": {
+                    "margin-desktop": "64px",
+                    "gutter": "24px",
+                    "max-width": "1440px",
+                    "unit": "4px",
+                    "margin-mobile": "20px"
+            },
+            "fontFamily": {
+                    "display-lg": ["Inter"],
+                    "body-lg": ["Inter"],
+                    "headline-md": ["Inter"],
+                    "headline-xl-mobile": ["Inter"],
+                    "headline-xl": ["Inter"],
+                    "label-sm": ["Geist"],
+                    "label-md": ["Geist"],
+                    "body-md": ["Inter"],
+                    "display-lg-mobile": ["Inter"]
+            },
+            "fontSize": {
+                    "display-lg": ["64px", {"lineHeight": "1.1", "letterSpacing": "-0.04em", "fontWeight": "900"}],
+                    "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                    "headline-md": ["24px", {"lineHeight": "1.3", "fontWeight": "700"}],
+                    "headline-xl-mobile": ["28px", {"lineHeight": "1.2", "fontWeight": "800"}],
+                    "headline-xl": ["36px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                    "label-sm": ["12px", {"lineHeight": "1", "letterSpacing": "0.1em", "fontWeight": "500"}],
+                    "label-md": ["14px", {"lineHeight": "1", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                    "body-md": ["16px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                    "display-lg-mobile": ["40px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "900"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            background-color: #1e100e;
+            overflow-x: hidden;
+        }
+        .marvel-backdrop {
+            position: fixed;
+            inset: -4%;
+            z-index: 0;
+            pointer-events: none;
+            opacity: 0.13;
+            background: linear-gradient(rgba(30, 16, 14, 0.58), rgba(30, 16, 14, 0.86)), url('images/bg.png') center / cover no-repeat;
+            transform: translate3d(var(--bg-x, 0px), var(--bg-y, 0px), 0) scale(1.06);
+            transition: transform 900ms cubic-bezier(0.22, 1, 0.36, 1);
+            will-change: transform;
+        }
+        .glass-panel {
+            background: rgba(44, 28, 26, 0.6);
+            backdrop-filter: blur(30px);
+            border: 1px solid rgba(171, 137, 134, 0.1);
+        }
+        .hero-glow {
+            box-shadow: 0 0 50px rgba(255, 84, 81, 0.1);
+        }
+        .progress-glow {
+            box-shadow: 0 0 15px rgba(255, 84, 81, 0.8);
+        }
+        .item-card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            min-height: 108px;
+        }
+        .item-card h4 {
+            display: -webkit-box;
+            -webkit-line-clamp: 1;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .item-card:hover {
+            transform: translateY(-3px);
+            border-color: rgba(255, 179, 173, 0.65);
+            background: rgba(66, 48, 47, 0.72);
+            box-shadow: 0 8px 8px rgba(0, 0, 0, 0.22);
+        }
+        .item-card:active { transform: translateY(-1px) scale(0.985); }
+        .item-card.card-tap { animation: card-tap 0.3s cubic-bezier(0.22, 1, 0.36, 1); }
+        @keyframes card-tap {
+            0% { transform: scale(1); }
+            35% { transform: scale(0.985); box-shadow: 0 0 0 2px rgba(255, 179, 173, 0.28); }
+            100% { transform: scale(1); }
+        }
+        .glass-panel:hover { border-color: rgba(255, 179, 173, 0.28); }
+        @media (prefers-reduced-motion: reduce) {
+            .marvel-backdrop, .item-card { transition: none; transform: none; }
+        }
+        .item-card.watched {
+            opacity: 0.6;
+            border-color: #ffb3ad;
+        }
+        .item-card.watched:hover {
+            opacity: 1;
+        }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #ff5451; border-radius: 10px; }
+
+    /* Toast notification */
+    #toast {
+        position: fixed;
+        left: 50%;
+        bottom: 32px;
+        transform: translate(-50%, 20px);
+        background: rgba(30, 16, 14, 0.95);
+        border: 1px solid rgba(255, 179, 173, 0.3);
+        color: #f9dcd9;
+        padding: 12px 24px;
+        border-radius: 9999px;
+        font-family: 'Geist', sans-serif;
+        font-size: 14px;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s ease, transform 0.3s ease;
+        z-index: 200;
+        max-width: 90vw;
+        text-align: center;
+    }
+    #toast.show {
+        opacity: 1;
+        transform: translate(-50%, 0);
+    }
+
+    /* Satisfying watch-confirm feedback (replaces confetti sparks) */
+    .item-card.just-watched {
+        animation: card-confirm 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    @keyframes card-confirm {
+        0% { transform: scale(1); box-shadow: none; }
+        40% { transform: scale(1.02); box-shadow: 0 0 0 1px rgba(255, 179, 173, 0.5), 0 0 24px rgba(255, 84, 81, 0.35); }
+        100% { transform: scale(1); box-shadow: none; }
+    }
+    .check-pop {
+        animation: check-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    @keyframes check-pop {
+        0% { transform: scale(0.4); opacity: 0; }
+        60% { transform: scale(1.15); opacity: 1; }
+        100% { transform: scale(1); opacity: 1; }
+    }
+
+    /* Progress bar pulse on watch */
+    #progressBar.pulse {
+        box-shadow: 0 0 30px rgba(255, 84, 81, 1);
+    }
+    
+    @keyframes scanline {
+        0% { transform: translateY(-100%); }
+        100% { transform: translateY(100%); }
+    }
+    .scanlines::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(to bottom, transparent 50%, rgba(0,0,0,0.1) 51%);
+        background-size: 100% 4px;
+        pointer-events: none;
+        z-index: 40;
+    }
+</style>
+
+</head>
+<body class="text-on-surface font-body-md selection:bg-primary selection:text-on-primary">
+<div aria-hidden="true" class="marvel-backdrop" id="marvelBackdrop"></div>
+<!-- Background Shader -->
+<!-- STITCH_SHADER_START:ANIMATION_1 class="fixed inset-0 w-full h-full z-0 opacity-40" -->
+<div class="fixed inset-0 w-full h-full z-0 opacity-40" style="display:block;">
+<canvas id="shader-canvas-ANIMATION_1" style="display:block;width:100%;height:100%"></canvas>
+<script>
+(function() {
+  const canvas = document.getElementById('shader-canvas-ANIMATION_1');
+
+// Keep the WebGL drawing buffer aligned with the CSS-sized canvas.
+function syncSize() {
+  const w = canvas.clientWidth || 1280;
+  const h = canvas.clientHeight || 720;
+  if (canvas.width !== w || canvas.height !== h) {
+    canvas.width = w;
+    canvas.height = h;
+  }
+}
+if (typeof ResizeObserver !== 'undefined') new ResizeObserver(syncSize).observe(canvas);
+syncSize();
+
+const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');if (!gl) return;const vs = `attribute vec2 a_position;
+varying vec2 v_texCoord;
+void main() {
+  v_texCoord = a_position * 0.5 + 0.5;
+  gl_Position = vec4(a_position, 0.0, 1.0);
+}`;const fs = `precision highp float;varying vec2 v_texCoord;uniform float u_time;uniform vec2 u_resolution;uniform vec2 u_mouse;
+
+float noise(vec2 p) {return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);}
+
+void main() {vec2 uv = v_texCoord;vec2 mouse = u_mouse / u_resolution;
+
+// Create moving color fields
+float t = u_time * 0.2;
+
+// Core nebula effect
+float n1 = noise(uv * 3.0 + vec2(t * 0.1, t * 0.15));
+float n2 = noise(uv * 5.0 - vec2(t * 0.2, t * 0.1));
+
+// Deep space colors derived from MCU palette
+vec3 color1 = vec3(0.039, 0.055, 0.094); // --bg-primary (#0a0e18)
+vec3 color2 = vec3(0.1, 0.12, 0.18);    // Deep navy
+vec3 accent = vec3(0.937, 0.267, 0.267); // --accent-red (#ef4444)
+
+// Mouse proximity glow
+float dist = distance(uv, mouse);
+float glow = smoothstep(0.4, 0.0, dist) * 0.15;
+
+// Nebula movement
+vec3 nebula = mix(color1, color2, sin(uv.x * 2.0 + t) * 0.5 + 0.5);
+nebula += accent * (sin(uv.y * 3.0 - t * 1.5) * 0.5 + 0.5) * 0.02;
+
+// Subtle star field
+float stars = pow(noise(uv * 100.0), 20.0) * 0.5;
+
+vec3 finalColor = nebula + glow + stars;
+
+gl_FragColor = vec4(finalColor, 1.0);
+
+}`;function cs(type, src) {const s = gl.createShader(type);gl.shaderSource(s, src);gl.compileShader(s);return s;}const prog = gl.createProgram();gl.attachShader(prog, cs(gl.VERTEX_SHADER, vs));gl.attachShader(prog, cs(gl.FRAGMENT_SHADER, fs));gl.linkProgram(prog);gl.useProgram(prog);const buf = gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER, buf);gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), gl.STATIC_DRAW);const pos = gl.getAttribLocation(prog, 'a_position');gl.enableVertexAttribArray(pos);gl.vertexAttribPointer(pos, 2, gl.FLOAT, false, 0, 0);const uTime = gl.getUniformLocation(prog, 'u_time');const uRes = gl.getUniformLocation(prog, 'u_resolution');const uMouse = gl.getUniformLocation(prog, 'u_mouse');
+
+// u_mouse is in pixel coordinates matching u_resolution (ShaderToy convention).// Shaders that need normalized coords should use: u_mouse / u_resolution.let mouse = { x: canvas.width / 2, y: canvas.height / 2 };window.addEventListener('mousemove', (event) => {const rect = canvas.getBoundingClientRect();if (rect.width && rect.height) {const nx = (event.clientX - rect.left) / rect.width;const ny = 1.0 - (event.clientY - rect.top) / rect.height;mouse.x = nx * canvas.width;mouse.y = ny * canvas.height;}});
+
+function render(t) {if (typeof ResizeObserver === 'undefined') syncSize();gl.viewport(0, 0, canvas.width, canvas.height);if (uTime) gl.uniform1f(uTime, t * 0.001);if (uRes) gl.uniform2f(uRes, canvas.width, canvas.height);if (uMouse) gl.uniform2f(uMouse, mouse.x, mouse.y);gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);requestAnimationFrame(render);}render(0);})();</script>
+
+</div>
+<!-- STITCH_SHADER_END:ANIMATION_1 -->
+<!-- UI Overlay Shell -->
+<div class="relative z-10 flex min-h-screen">
+<!-- Main Content Canvas -->
+<main class="flex-1 flex flex-col min-h-screen">
+<!-- Top App Bar -->
+<header class="sticky top-0 z-40 bg-surface/40 backdrop-blur-xl border-b border-outline-variant/30 px-margin-mobile md:px-margin-desktop py-4 flex justify-between items-center">
+<div class="flex items-center gap-3">
+<!-- STITCH_SVG_START:ANIMATION_2 class="w-10 h-10 rounded-full overflow-hidden" --><div class="w-10 h-10 rounded-full overflow-hidden shrink-0" id="animated-svg-ANIMATION_2" style="display:block;"><svg viewbox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<lineargradient id="shieldGrad" x1="0%" x2="100%" y1="0%" y2="100%">
+<stop offset="0%" style="stop-color:#ef4444;stop-opacity:1"></stop>
+<stop offset="100%" style="stop-color:#b91c1c;stop-opacity:1"></stop>
+</lineargradient>
+</defs>
+<!-- Outer Ring -->
+<circle cx="50" cy="50" fill="url(#shieldGrad)" r="45">
+<animatetransform attributename="transform" dur="20s" from="0 50 50" repeatcount="indefinite" to="360 50 50" type="rotate"></animatetransform>
+</circle>
+<!-- Inner White Ring -->
+<circle cx="50" cy="50" fill="white" opacity="0.9" r="35">
+<animate attributename="r" dur="3s" repeatcount="indefinite" values="35;36;35"></animate>
+</circle>
+<!-- Middle Red Ring -->
+<circle cx="50" cy="50" fill="#ef4444" r="25"></circle>
+<!-- Center Blue/Star -->
+<circle cx="50" cy="50" fill="#1e40af" r="15"></circle>
+<path d="M50 38 L53 47 L62 47 L55 52 L57 61 L50 56 L43 61 L45 52 L38 47 L47 47 Z" fill="white">
+<animate attributename="opacity" dur="2s" repeatcount="indefinite" values="1;0.7;1"></animate>
+</path>
+</svg></div><!-- STITCH_SVG_END:ANIMATION_2 -->
+<h1 class="font-display-lg text-headline-xl-mobile md:text-headline-xl text-primary uppercase tracking-tighter">MCU WATCHLIST</h1>
+</div>
+<div class="flex items-center gap-4">
+<div class="hidden md:flex bg-surface-container-high/60 rounded-full px-4 py-2 border border-outline-variant/30 items-center gap-3">
+<span class="material-symbols-outlined text-on-surface-variant text-sm">search</span>
+<input aria-label="Search MCU watchlist" class="w-52 bg-transparent border-none outline-none text-on-surface placeholder:text-on-surface-variant/50 font-label-md transition-all focus:border-none focus:outline-none focus:ring-0 focus:ring-offset-0 focus:shadow-none md:focus:w-56" id="watchlistSearch" placeholder="Search..    [Ctrl+K]" type="search"/>
+</div>
+<!-- Clearance Badge -->
+<button class="flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-full bg-surface-container-high/60 border border-outline-variant/30 hover:border-primary/50 transition-all" id="clearanceBadgeBtn" onclick="toggleClearanceModal()">
+<div class="w-8 h-8 rounded-full border-2 border-primary overflow-hidden shrink-0">
+<img class="w-full h-full object-cover" src="images/fury.jpg"/>
+</div>
+<div class="hidden sm:flex flex-col items-start leading-tight">
+<span class="font-label-md text-on-surface text-xs">DIRECTOR FURY</span>
+<span class="text-[9px] uppercase tracking-widest text-primary">Level 7 Clearance</span>
+</div>
+</button>
+<div class="flex gap-2">
+<button class="p-2 text-on-surface-variant hover:text-primary transition-all" onclick="toggleSettingsModal()"><span class="material-symbols-outlined">settings</span></button>
+</div>
+</div>
+</header>
+<!-- Scrollable Content -->
+<div class="p-margin-mobile md:p-margin-desktop flex flex-col gap-12 max-w-max-width mx-auto w-full">
+<!-- Progress Hero Section -->
+<section class="glass-panel rounded-xl p-8 flex flex-col md:flex-row justify-between items-center gap-8 relative overflow-hidden scanlines">
+<div class="relative z-10 space-y-2">
+<p class="font-label-sm text-secondary uppercase tracking-[0.2em]">Watchlist Progress</p>
+<h2 class="font-headline-xl text-on-surface">Your MCU Run</h2>
+<div class="flex items-center gap-4">
+<span class="font-display-lg text-primary" id="progressText">0%</span>
+<span class="text-on-surface-variant font-label-md"><span id="watchedCount">0</span> / <span id="totalCount">65</span> TITLES WATCHED</span>
+</div>
+</div>
+<!-- Progress Bar Component -->
+<div class="w-full md:w-1/2 flex flex-col gap-4 relative z-10">
+<div class="h-4 w-full bg-surface-container-highest rounded-full overflow-hidden border border-outline-variant/20">
+<div class="h-full bg-primary-container progress-glow transition-all duration-700 ease-out flex justify-end items-center" id="progressBar" style="width: 0%">
+<div class="w-1 h-full bg-white blur-[2px]"></div>
+</div>
+</div>
+<div class="flex justify-between items-center">
+<div class="flex gap-4">
+<button class="font-label-md px-4 py-1 rounded-full border border-primary text-primary bg-primary/10 transition-all" id="sortRelease" onclick="sortOrder('release')">RELEASE</button>
+<button class="font-label-md px-4 py-1 rounded-full border border-outline-variant text-on-surface-variant hover:border-secondary hover:text-secondary transition-all" id="sortChrono" onclick="sortOrder('chronological')">CHRONOLOGICAL</button>
+</div>
+</div>
+</div>
+</section>
+<!-- Phase Content Container -->
+<div class="space-y-16" id="watchlist-container">
+<!-- Phases will be injected here via JS -->
+</div>
+</div>
+<!-- Footer -->
+<footer class="bg-surface-container-lowest border-t border-outline-variant/10 py-12 mt-auto">
+<div class="px-margin-mobile md:px-margin-desktop flex flex-col md:flex-row justify-between items-center gap-8">
+<div class="flex flex-col gap-2">
+<p class="font-display-lg text-label-md text-primary tracking-widest">STARK INDUSTRIES</p>
+<p class="font-label-sm text-on-surface-variant/60">© 2024 STARK INDUSTRIES. ALL RIGHTS RESERVED.</p>
+</div>
+<div class="flex gap-8">
+<a class="font-label-sm text-on-surface-variant/60 hover:text-primary transition-all" href="#">Privacy Protocol</a>
+<a class="font-label-sm text-on-surface-variant/60 hover:text-primary transition-all" href="#">Terms of Service</a>
+<a class="font-label-sm text-on-surface-variant/60 hover:text-primary transition-all" href="#">Contact S.H.I.E.L.D.</a>
+</div>
+</div>
+</footer>
+</main>
+</div>
+<!-- Toast Notification --><div id="toast"></div>
+<!-- Reset Modal -->
+<div class="fixed inset-0 z-[100] flex items-center justify-center p-6 hidden opacity-0 transition-opacity duration-300" id="resetModal">
+<div class="absolute inset-0 bg-surface/90 backdrop-blur-lg" onclick="toggleResetModal()"></div>
+<div class="relative glass-panel p-8 rounded-xl max-w-md w-full border-2 border-error/20 flex flex-col gap-6 text-center">
+<span class="material-symbols-outlined text-error text-6xl" style="font-variation-settings: 'FILL' 1;">warning</span>
+<div>
+<h3 class="font-headline-md text-on-surface mb-2">ERASE INTELLIGENCE?</h3>
+<p class="font-body-md text-on-surface-variant">This will permanently clear your viewing history from the S.H.I.E.L.D. database. This action is irreversible.</p>
+</div>
+<div class="flex gap-4">
+<button class="flex-1 py-3 rounded-full border border-outline-variant text-on-surface font-label-md hover:bg-surface-variant transition-all" onclick="toggleResetModal()">ABORT</button>
+<button class="flex-1 py-3 rounded-full bg-error text-on-error font-label-md hover:scale-105 active:scale-95 transition-all" onclick="resetWatchlist()">ERASE ALL</button>
+</div>
+</div>
+</div>
+<!-- Settings Modal -->
+<div class="fixed inset-0 z-[100] flex items-center justify-center p-6 hidden opacity-0 transition-opacity duration-300" id="settingsModal">
+<div class="absolute inset-0 bg-surface/90 backdrop-blur-lg" onclick="toggleSettingsModal()"></div>
+<div class="relative glass-panel p-8 rounded-xl max-w-md w-full border border-outline-variant/20 flex flex-col gap-6">
+<div class="flex items-center justify-between">
+<h3 class="font-headline-md text-on-surface">SETTINGS</h3>
+<button aria-label="Close settings" class="material-symbols-outlined text-on-surface-variant hover:text-primary" onclick="toggleSettingsModal()">close</button>
+</div>
+<div class="flex flex-col gap-2">
+<label class="font-label-sm uppercase tracking-widest text-on-surface-variant" for="settingsAgentNameInput">Agent Name</label>
+<div class="flex gap-3">
+<input class="flex-1 bg-surface-container-highest border border-outline-variant/40 rounded-full px-4 py-2 text-on-surface outline-none focus:border-primary" id="settingsAgentNameInput" maxlength="24" placeholder="Enter your name" type="text"/>
+<button class="px-5 py-2 rounded-full bg-secondary-container text-on-secondary-container font-label-md hover:scale-105 active:scale-95 transition-all" onclick="saveAgentNameFromSettings()">SAVE</button>
+</div>
+</div>
+<div class="h-px w-full bg-outline-variant/10"></div>
+<div class="flex flex-col gap-2">
+<p class="font-label-sm uppercase tracking-widest text-on-surface-variant">Database</p>
+<button class="w-full py-3 bg-primary-container text-on-primary-container font-label-md rounded-full hover:scale-105 active:scale-95 transition-all" onclick="toggleSettingsModal(); toggleResetModal();">
+                    RESET DATABASE
+                </button>
+</div>
+</div>
+</div>
+<!-- Clearance ID Card Modal -->
+<div class="fixed inset-0 z-[100] flex items-center justify-center p-6 hidden opacity-0 transition-opacity duration-300" id="clearanceModal">
+<div class="absolute inset-0 bg-surface/90 backdrop-blur-lg" onclick="toggleClearanceModal()"></div>
+<div aria-labelledby="clearanceCardTitle" class="relative w-full max-w-lg overflow-hidden rounded-xl border border-primary/40 bg-surface-container-low p-6 shadow-[0_8px_8px_rgba(0,0,0,0.22)] md:p-8">
+<button aria-label="Close clearance card" class="material-symbols-outlined absolute top-5 right-5 text-on-surface-variant hover:text-primary" onclick="toggleClearanceModal()">close</button>
+<div class="flex items-start justify-between border-b border-outline-variant/40 pb-5 pr-8">
+<div>
+<h3 class="font-headline-xl text-primary font-black tracking-tight leading-none" id="clearanceCardTitle">S.H.I.E.L.D.</h3>
+<p class="font-label-sm text-secondary tracking-[0.15em] mt-2 leading-snug">FIELD AGENT CREDENTIAL · LEVEL 7</p>
+</div>
+<div class="shrink-0 text-center border border-primary/30 rounded-lg px-3 py-1.5 bg-primary/10">
+<p class="text-[9px] uppercase tracking-widest text-on-surface-variant">Clearance</p>
+<p class="font-headline-md text-primary leading-none">07</p>
+</div>
+</div>
+<div class="mt-6 flex gap-5 items-start">
+<div class="w-24 h-24 rounded-lg overflow-hidden border border-primary/60 shrink-0 md:w-28 md:h-28">
+<img class="w-full h-full object-cover" src="images/fury.jpg"/>
+</div>
+<div class="flex-1 grid grid-cols-2 gap-x-4 gap-y-4 font-label-md">
+<div>
+<p class="text-[9px] uppercase tracking-widest text-on-surface-variant">Agent</p>
+<div class="flex items-center gap-2">
+<p class="text-on-surface font-headline-md text-base leading-tight" id="agentNameDisplay">Dhairya</p>
+<button aria-label="Edit agent name" class="material-symbols-outlined text-on-surface-variant hover:text-primary text-sm" onclick="startEditAgentName()">edit</button>
+</div>
+<div class="hidden items-center gap-2 mt-1" id="agentNameEditRow">
+<input class="flex-1 min-w-0 bg-surface-container-highest border border-outline-variant/40 rounded-full px-3 py-1 text-on-surface text-sm outline-none focus:border-primary" id="agentNameInput" maxlength="24" type="text"/>
+<button class="text-primary font-label-sm px-1 shrink-0" onclick="saveAgentName()">SAVE</button>
+</div>
+</div>
+<div>
+<p class="text-[9px] uppercase tracking-widest text-on-surface-variant">Duty status</p>
+<p class="text-tertiary font-headline-md text-base leading-tight">Active</p>
+</div>
+<div>
+<p class="text-[9px] uppercase tracking-widest text-on-surface-variant">Access</p>
+<p class="text-on-surface font-headline-md text-base leading-tight">Level 7</p>
+</div>
+<div>
+<p class="text-[9px] uppercase tracking-widest text-on-surface-variant">Issued</p>
+<p class="text-on-surface font-headline-md text-base leading-tight">2026</p>
+</div>
+</div>
+</div>
+<div class="mt-6 flex flex-col gap-2">
+<div class="flex justify-between items-center">
+<p class="text-[9px] uppercase tracking-widest text-on-surface-variant">Mission Completion</p>
+<span class="text-primary font-label-md text-sm" id="clearanceMissionPct">0%</span>
+</div>
+<div class="h-2 w-full bg-surface-container-highest rounded-full overflow-hidden border border-outline-variant/20">
+<div class="h-full bg-primary-container progress-glow transition-all duration-700 ease-out" id="clearanceProgressBar" style="width: 0%"></div>
+</div>
+<div class="mt-5 flex flex-wrap items-start justify-between gap-4 border-t border-outline-variant/30 pt-4 text-[9px] font-label-sm uppercase tracking-widest text-on-surface-variant">
+<div class="flex flex-col gap-1">
+<span>S.H.I.E.L.D. database</span>
+<span class="text-secondary">Earth-616 operations</span>
+</div>
+<div class="flex flex-col gap-1 text-right">
+<span class="text-tertiary">Verified credential</span>
+<span>Authorization confirmed</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<script>
+        const mcuData = [
+            // Phase 1
+            { id: 'iron-man', title: "Iron Man", type: "movie", phase: 1, release: "2 May 2008", releaseOrder: 1, chrono: 4, watched: false },
+            { id: 'incredible-hulk', title: "The Incredible Hulk", type: "movie", phase: 1, release: "13 Jun 2008", releaseOrder: 2, chrono: 6, watched: false },
+            { id: 'iron-man-2', title: "Iron Man 2", type: "movie", phase: 1, release: "7 May 2010", releaseOrder: 3, chrono: 5, watched: false },
+            { id: 'thor', title: "Thor", type: "movie", phase: 1, release: "6 May 2011", releaseOrder: 4, chrono: 7, watched: false },
+            { id: 'first-avenger', title: "Captain America: The First Avenger", type: "movie", phase: 1, release: "22 Jul 2011", releaseOrder: 5, chrono: 2, watched: false },
+            { id: 'avengers', title: "The Avengers", type: "movie", phase: 1, release: "4 May 2012", releaseOrder: 6, chrono: 8, watched: false },
+
+        // Phase 2
+        { id: 'iron-man-3', title: "Iron Man 3", type: "movie", phase: 2, release: "3 May 2013", releaseOrder: 7, chrono: 10, watched: false },
+        { id: 'dark-world', title: "Thor: The Dark World", type: "movie", phase: 2, release: "8 Nov 2013", releaseOrder: 8, chrono: 9, watched: false },
+        { id: 'winter-soldier', title: "Captain America: The Winter Soldier", type: "movie", phase: 2, release: "4 Apr 2014", releaseOrder: 9, chrono: 11, watched: false },
+        { id: 'gotg', title: "Guardians of the Galaxy", type: "movie", phase: 2, release: "1 Aug 2014", releaseOrder: 10, chrono: 12, watched: false },
+        { id: 'ultron', title: "Avengers: Age of Ultron", type: "movie", phase: 2, release: "1 May 2015", releaseOrder: 11, chrono: 15, watched: false },
+        { id: 'ant-man', title: "Ant-Man", type: "movie", phase: 2, release: "17 Jul 2015", releaseOrder: 12, chrono: 16, watched: false },
+
+        // Phase 3
+        { id: 'civil-war', title: "Captain America: Civil War", type: "movie", phase: 3, release: "6 May 2016", releaseOrder: 13, chrono: 17, watched: false },
+        { id: 'doctor-strange', title: "Doctor Strange", type: "movie", phase: 3, release: "4 Nov 2016", releaseOrder: 14, chrono: 19, watched: false },
+        { id: 'gotg-2', title: "Guardians of the Galaxy Vol. 2", type: "movie", phase: 3, release: "5 May 2017", releaseOrder: 15, chrono: 13, watched: false },
+        { id: 'homecoming', title: "Spider-Man: Homecoming", type: "movie", phase: 3, release: "7 Jul 2017", releaseOrder: 16, chrono: 21, watched: false },
+        { id: 'ragnarok', title: "Thor: Ragnarok", type: "movie", phase: 3, release: "3 Nov 2017", releaseOrder: 17, chrono: 22, watched: false },
+        { id: 'black-panther', title: "Black Panther", type: "movie", phase: 3, release: "16 Feb 2018", releaseOrder: 18, chrono: 20, watched: false },
+        { id: 'infinity-war', title: "Avengers: Infinity War", type: "movie", phase: 3, release: "27 Apr 2018", releaseOrder: 19, chrono: 23, watched: false },
+        { id: 'ant-man-wasp', title: "Ant-Man and the Wasp", type: "movie", phase: 3, release: "6 Jul 2018", releaseOrder: 20, chrono: 24, watched: false },
+        { id: 'captain-marvel', title: "Captain Marvel", type: "movie", phase: 3, release: "8 Mar 2019", releaseOrder: 21, chrono: 3, watched: false },
+        { id: 'endgame', title: "Avengers: Endgame", type: "movie", phase: 3, release: "26 Apr 2019", releaseOrder: 22, chrono: 25, watched: false },
+        { id: 'far-from-home', title: "Spider-Man: Far From Home", type: "movie", phase: 3, release: "2 Jul 2019", releaseOrder: 23, chrono: 34, watched: false },
+
+        // Phase 4
+        { id: 'wandavision', title: "WandaVision", type: "series", phase: 4, release: "15 Jan – 5 Mar 2021", releaseOrder: 24, chrono: 30, watched: false },
+        { id: 'falcon-winter-soldier', title: "The Falcon and the Winter Soldier", type: "series", phase: 4, release: "19 Mar – 23 Apr 2021", releaseOrder: 25, chrono: 32, watched: false },
+        { id: 'loki-s1', title: "Loki — Season 1", type: "series", phase: 4, release: "9 Jun – 14 Jul 2021", releaseOrder: 26, chrono: 26, watched: false },
+        { id: 'black-widow', title: "Black Widow", type: "movie", phase: 4, release: "9 Jul 2021", releaseOrder: 27, chrono: 18, watched: false },
+        { id: 'what-if-s1', title: "What If...? — Season 1", type: "animated", phase: 4, release: "11 Aug – 6 Oct 2021", releaseOrder: 28, chrono: 28, watched: false },
+        { id: 'shang-chi', title: "Shang-Chi and the Legend of the Ten Rings", type: "movie", phase: 4, release: "3 Sep 2021", releaseOrder: 29, chrono: 31, watched: false },
+        { id: 'eternals', title: "Eternals", type: "movie", phase: 4, release: "5 Nov 2021", releaseOrder: 30, chrono: 33, watched: false },
+        { id: 'hawkeye', title: "Hawkeye", type: "series", phase: 4, release: "24 Nov – 22 Dec 2021", releaseOrder: 31, chrono: 37, watched: false },
+        { id: 'no-way-home', title: "Spider-Man: No Way Home", type: "movie", phase: 4, release: "17 Dec 2021", releaseOrder: 32, chrono: 35, watched: false },
+        { id: 'moon-knight', title: "Moon Knight", type: "series", phase: 4, release: "30 Mar – 4 May 2022", releaseOrder: 33, chrono: 39, watched: false },
+        { id: 'multiverse-madness', title: "Doctor Strange in the Multiverse of Madness", type: "movie", phase: 4, release: "6 May 2022", releaseOrder: 34, chrono: 36, watched: false },
+        { id: 'ms-marvel', title: "Ms. Marvel", type: "series", phase: 4, release: "8 Jun – 13 Jul 2022", releaseOrder: 35, chrono: 42, watched: false },
+        { id: 'love-thunder', title: "Thor: Love and Thunder", type: "movie", phase: 4, release: "8 Jul 2022", releaseOrder: 36, chrono: 44, watched: false },
+        { id: 'i-am-groot-s1', title: "I Am Groot — Season 1", type: "shorts", phase: 4, release: "10 Aug 2022", releaseOrder: 37, chrono: 14, watched: false },
+        { id: 'she-hulk', title: "She-Hulk: Attorney at Law", type: "series", phase: 4, release: "18 Aug – 13 Oct 2022", releaseOrder: 38, chrono: 41, watched: false },
+        { id: 'werewolf', title: "Werewolf by Night", type: "special", phase: 4, release: "7 Oct 2022", releaseOrder: 39, chrono: 46, watched: false },
+        { id: 'wakanda-forever', title: "Black Panther: Wakanda Forever", type: "movie", phase: 4, release: "11 Nov 2022", releaseOrder: 40, chrono: 40, watched: false },
+        { id: 'holiday-special', title: "The Guardians of the Galaxy Holiday Special", type: "special", phase: 4, release: "25 Nov 2022", releaseOrder: 41, chrono: 47, watched: false },
+
+        // Phase 5
+        { id: 'quantumania', title: "Ant-Man and the Wasp: Quantumania", type: "movie", phase: 5, release: "17 Feb 2023", releaseOrder: 42, chrono: 48, watched: false },
+        { id: 'gotg-3', title: "Guardians of the Galaxy Vol. 3", type: "movie", phase: 5, release: "5 May 2023", releaseOrder: 43, chrono: 49, watched: false },
+        { id: 'secret-invasion', title: "Secret Invasion", type: "series", phase: 5, release: "21 Jun – 26 Jul 2023", releaseOrder: 44, chrono: 50, watched: false },
+        { id: 'i-am-groot-s2', title: "I Am Groot — Season 2", type: "shorts", phase: 5, release: "6 Sep 2023", releaseOrder: 45, chrono: 14.1, watched: false },
+        { id: 'loki-s2', title: "Loki — Season 2", type: "series", phase: 5, release: "5 Oct – 9 Nov 2023", releaseOrder: 46, chrono: 27, watched: false },
+        { id: 'marvels', title: "The Marvels", type: "movie", phase: 5, release: "10 Nov 2023", releaseOrder: 47, chrono: 51, watched: false },
+        { id: 'what-if-s2', title: "What If...? — Season 2", type: "animated", phase: 5, release: "22 – 30 Dec 2023", releaseOrder: 48, chrono: 28.1, watched: false },
+        { id: 'echo', title: "Echo", type: "series", phase: 5, release: "9 Jan 2024", releaseOrder: 49, chrono: 40.1, watched: false },
+        { id: 'deadpool-wolverine', title: "Deadpool & Wolverine", type: "movie", phase: 5, release: "26 Jul 2024", releaseOrder: 50, chrono: 29, watched: false },
+        { id: 'agatha', title: "Agatha All Along", type: "series", phase: 5, release: "18 Sep – 30 Oct 2024", releaseOrder: 51, chrono: 52, watched: false },
+        { id: 'what-if-s3', title: "What If...? — Season 3", type: "animated", phase: 5, release: "22 – 29 Dec 2024", releaseOrder: 52, chrono: 28.2, watched: false },
+        { id: 'brave-new-world', title: "Captain America: Brave New World", type: "movie", phase: 5, release: "14 Feb 2025", releaseOrder: 53, chrono: 54, watched: false },
+        { id: 'daredevil-s1', title: "Daredevil: Born Again — Season 1", type: "series", phase: 5, release: "4 Mar – 15 Apr 2025", releaseOrder: 54, chrono: 53, watched: false },
+        { id: 'thunderbolts', title: "Thunderbolts*", type: "movie", phase: 5, release: "2 May 2025", releaseOrder: 55, chrono: 55, watched: false },
+        { id: 'ironheart', title: "Ironheart", type: "series", phase: 5, release: "24 Jun – 1 Jul 2025", releaseOrder: 56, chrono: 43, watched: false },
+
+        // Phase 6
+        { id: 'fantastic-four', title: "The Fantastic Four: First Steps", type: "movie", phase: 6, release: "25 Jul 2025", releaseOrder: 57, chrono: 56, watched: false },
+        { id: 'eyes-wakanda', title: "Eyes of Wakanda", type: "animated", phase: 6, release: "1 Aug 2025", releaseOrder: 58, chrono: 1, watched: false },
+        { id: 'marvel-zombies', title: "Marvel Zombies", type: "animated", phase: 6, release: "24 Sep 2025", releaseOrder: 59, chrono: 28.3, watched: false },
+        { id: 'wonder-man', title: "Wonder Man", type: "series", phase: 6, release: "27 Jan 2026", releaseOrder: 60, chrono: 57, watched: false },
+        { id: 'daredevil-s2', title: "Daredevil: Born Again — Season 2", type: "series", phase: 6, release: "24 Mar – 28 Apr 2026", releaseOrder: 61, chrono: 58, watched: false },
+        { id: 'spider-man-bnd', title: "Spider-Man: Brand New Day", type: "movie", phase: 6, release: "31 Jul 2026", releaseOrder: 62, chrono: 60, watched: false, upcoming: true },
+        { id: 'vision-quest', title: "VisionQuest", type: "series", phase: 6, release: "14 Oct 2026", releaseOrder: 63, chrono: 59, watched: false, upcoming: true },
+        { id: 'doomsday', title: "Avengers: Doomsday", type: "movie", phase: 6, release: "18 Dec 2026", releaseOrder: 64, chrono: 61, watched: false, upcoming: true },
+        { id: 'secret-wars', title: "Avengers: Secret Wars", type: "movie", phase: 6, release: "17 Dec 2027", releaseOrder: 65, chrono: 62, watched: false, upcoming: true }
     ];
 
-    const storageKey = 'mcu-watchlist-v1';
-    const watched = new Set(JSON.parse(localStorage.getItem(storageKey) || '[]'));
-    const list = document.querySelector('#list');
-    const count = document.querySelector('#count');
-    const bar = document.querySelector('#bar');
-    const toast = document.querySelector('#toast');
-    const completion = document.querySelector('#completion');
-    const reset = document.querySelector('#reset');
-    const resetModal = document.querySelector('#reset-modal');
-    const cancelReset = document.querySelector('#cancel-reset');
-    const confirmReset = document.querySelector('#confirm-reset');
-    let view = 'release';
-    let toastTimer;
+    // Runtime and IMDb rating snapshot. Series runtime is the typical episode length.
+    const mediaFacts = {
+        'iron-man':['2h 6m','7.9'],'incredible-hulk':['1h 52m','6.6'],'iron-man-2':['2h 4m','6.9'],'thor':['1h 55m','7.0'],'first-avenger':['2h 4m','6.9'],'avengers':['2h 23m','8.0'],
+        'iron-man-3':['2h 10m','7.1'],'dark-world':['1h 52m','6.8'],'winter-soldier':['2h 16m','7.7'],'guardians':['2h 1m','8.0'],'age-ultron':['2h 21m','7.3'],'ant-man':['1h 57m','7.2'],
+        'civil-war':['2h 27m','7.8'],'doctor-strange':['1h 55m','7.5'],'gotg-2':['2h 17m','7.6'],'homecoming':['2h 13m','7.4'],'ragnarok':['2h 10m','7.9'],'black-panther':['2h 14m','7.3'],'infinity-war':['2h 29m','8.4'],'ant-man-wasp':['1h 58m','7.0'],'captain-marvel':['2h 3m','6.8'],'endgame':['3h 1m','8.4'],'far-from-home':['2h 9m','7.4'],
+        'wandavision':['9 ep · 39m','7.9'],'falcon-winter-soldier':['6 ep · 50m','7.2'],'loki-s1':['6 ep · 52m','8.2'],'black-widow':['2h 14m','6.7'],'what-if-s1':['9 ep · 33m','7.4'],'shang-chi':['2h 12m','7.3'],'eternals':['2h 36m','6.3'],'hawkeye':['6 ep · 48m','7.5'],'no-way-home':['2h 28m','8.2'],'moon-knight':['6 ep · 46m','7.3'],'multiverse-madness':['2h 6m','6.9'],'ms-marvel':['6 ep · 50m','6.2'],'love-thunder':['1h 59m','6.2'],'i-am-groot-s1':['5 ep · 5m','6.7'],'she-hulk':['9 ep · 30m','5.2'],'werewolf':['52m','6.9'],'wakanda-forever':['2h 41m','6.6'],'holiday-special':['44m','6.9'],
+        'quantumania':['2h 4m','6.1'],'gotg-3':['2h 30m','7.9'],'secret-invasion':['6 ep · 47m','5.9'],'i-am-groot-s2':['5 ep · 5m','6.7'],'loki-s2':['6 ep · 50m','8.2'],'marvels':['1h 45m','5.5'],'what-if-s2':['9 ep · 32m','7.3'],'echo':['5 ep · 43m','6.0'],'deadpool-wolverine':['2h 8m','7.5'],'agatha':['9 ep · 44m','7.2'],'what-if-s3':['8 ep · 30m','7.2'],'brave-new-world':['1h 58m','5.7'],'daredevil-s1':['9 ep · 48m','8.1'],'thunderbolts':['2h 6m','7.2'],'ironheart':['6 ep · 50m','4.4'],
+        'fantastic-four':['1h 55m','7.2'],'eyes-wakanda':['4 ep · 30m','6.4'],'marvel-zombies':['4 ep · 28m','6.2'],'wonder-man':['8 ep · 45m','7.1'],'daredevil-s2':['8 ep · 50m','8.1']
+    };
 
-    function save() { localStorage.setItem(storageKey, JSON.stringify([...watched])); }
+    let currentSort = 'release';
+    let searchQuery = '';
+    const container = document.getElementById('watchlist-container');
+
+    // Initialization
+    function init() {
+        loadWatchedStatus();
+        renderWatchlist();
+        updateProgress();
+        loadAgentName();
+        const backdrop = document.getElementById('marvelBackdrop');
+        if (backdrop && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            document.addEventListener('pointermove', (event) => {
+                const x = (event.clientX / window.innerWidth - 0.5) * 16;
+                const y = (event.clientY / window.innerHeight - 0.5) * 12;
+                backdrop.style.setProperty('--bg-x', `${x}px`);
+                backdrop.style.setProperty('--bg-y', `${y}px`);
+            }, { passive: true });
+        }
+        const searchInput = document.getElementById('watchlistSearch');
+        if (searchInput) {
+            searchInput.addEventListener('input', (event) => {
+                searchQuery = event.target.value.trim().toLowerCase();
+                renderWatchlist();
+            });
+            document.addEventListener('keydown', (event) => {
+                if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== 'k') return;
+                event.preventDefault();
+                searchInput.focus();
+                searchInput.select();
+            });
+        }
+    }
+
+    function loadWatchedStatus() {
+        const saved = localStorage.getItem('mcu_watchlist_v3');
+        if (saved) {
+            const watchedIds = JSON.parse(saved);
+            mcuData.forEach(item => {
+                item.watched = watchedIds.includes(item.id);
+            });
+        }
+    }
+
+    function saveWatchedStatus() {
+        const watchedIds = mcuData.filter(item => item.watched).map(item => item.id);
+        localStorage.setItem('mcu_watchlist_v3', JSON.stringify(watchedIds));
+    }
+
+    function sortOrder(type) {
+        currentSort = type; // 'release' sorts by releaseOrder, 'chronological' sorts by chrono
+        document.getElementById('sortRelease').classList.toggle('border-primary', type === 'release');
+        document.getElementById('sortRelease').classList.toggle('text-primary', type === 'release');
+        document.getElementById('sortRelease').classList.toggle('bg-primary/10', type === 'release');
+        document.getElementById('sortRelease').classList.toggle('border-outline-variant', type !== 'release');
+        document.getElementById('sortRelease').classList.toggle('text-on-surface-variant', type !== 'release');
+        
+        document.getElementById('sortChrono').classList.toggle('border-secondary', type === 'chronological');
+        document.getElementById('sortChrono').classList.toggle('text-secondary', type === 'chronological');
+        document.getElementById('sortChrono').classList.toggle('bg-secondary/10', type === 'chronological');
+        document.getElementById('sortChrono').classList.toggle('border-outline-variant', type !== 'chronological');
+        document.getElementById('sortChrono').classList.toggle('text-on-surface-variant', type !== 'chronological');
+        
+        renderWatchlist();
+    }
+
+    function toggleWatched(id) {
+        const item = mcuData.find(i => i.id === id);
+        if (item.upcoming) {
+            showToast(`Not yet released — ${item.title} hits screens ${item.release}`);
+            return;
+        }
+        item.watched = !item.watched;
+        saveWatchedStatus();
+
+        const card = document.getElementById(`card-${item.id}`);
+        if (card) {
+            card.className = cardClassName(item);
+            card.innerHTML = cardInnerHTML(item);
+            card.classList.add('card-tap');
+            card.addEventListener('animationend', () => card.classList.remove('card-tap'), { once: true });
+            if (item.watched) {
+                card.classList.add('just-watched');
+                card.addEventListener('animationend', () => card.classList.remove('just-watched'), { once: true });
+            }
+        }
+
+        updateProgress();
+        if (item.watched) {
+            showToast(`✓ Marked as watched: ${item.title}`);
+            pulseProgressBar();
+        }
+    }
+
+    let toastTimer;
+    function showToast(message) {
+        const toast = document.getElementById('toast');
+        if (!toast) return;
+        toast.textContent = message;
+        toast.classList.add('show');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => toast.classList.remove('show'), 2500);
+    }
+
+    function pulseProgressBar() {
+        const bar = document.getElementById('progressBar');
+        bar.classList.remove('pulse');
+        requestAnimationFrame(() => bar.classList.add('pulse'));
+        window.setTimeout(() => bar.classList.remove('pulse'), 400);
+    }
+
     function updateProgress() {
-      const completed = watched.size;
-      count.textContent = `${completed} / ${data.length} watched`;
-      bar.style.width = `${(completed / data.length) * 100}%`;
-      completion.classList.toggle('show', completed === data.length);
+        const watched = mcuData.filter(i => i.watched).length;
+        const total = mcuData.length;
+        const percentage = Math.round((watched / total) * 100);
+        
+        document.getElementById('watchedCount').innerText = watched;
+        document.getElementById('totalCount').innerText = total;
+        document.getElementById('progressText').innerText = `${percentage}%`;
+        document.getElementById('progressBar').style.width = `${percentage}%`;
+        const missionPct = document.getElementById('clearanceMissionPct');
+        if (missionPct) missionPct.innerText = `${percentage}%`;
+        const clearanceBar = document.getElementById('clearanceProgressBar');
+        if (clearanceBar) clearanceBar.style.width = `${percentage}%`;
     }
-    function celebrate(item, indicator) {
-      toast.textContent = `✓ Marked as watched: ${item.title}`;
-      toast.classList.add('show');
-      clearTimeout(toastTimer);
-      toastTimer = setTimeout(() => toast.classList.remove('show'), 2500);
-      bar.classList.remove('pulse');
-      requestAnimationFrame(() => bar.classList.add('pulse'));
-      window.setTimeout(() => bar.classList.remove('pulse'), 400);
-      const colors = ['#ed1d24', '#5ce0a5', '#57b9ff', '#ffd15c'];
-      const rect = indicator.getBoundingClientRect();
-      for (let i = 0; i < 9; i++) {
-        const spark = document.createElement('i');
-        const angle = (Math.PI * 2 * i) / 9;
-        const distance = 24 + Math.random() * 28;
-        spark.className = 'spark';
-        spark.style.left = `${rect.left + rect.width / 2}px`;
-        spark.style.top = `${rect.top + rect.height / 2}px`;
-        spark.style.background = colors[i % colors.length];
-        spark.style.setProperty('--x', `${Math.cos(angle) * distance}px`);
-        spark.style.setProperty('--y', `${Math.sin(angle) * distance}px`);
-        document.body.append(spark);
-        spark.addEventListener('animationend', () => spark.remove());
-      }
+
+    // Agent name + clearance badge
+    function loadAgentName() {
+        const saved = localStorage.getItem('mcu_agent_name') || 'Dhairya';
+        document.getElementById('agentNameDisplay').innerText = saved;
+        document.getElementById('settingsAgentNameInput').value = saved;
     }
-    function makeRow(item) {
-      const row = document.createElement('button');
-      row.type = 'button';
-      row.className = `row${watched.has(item.id) ? ' done' : ''}${item.upcoming ? ' upcoming' : ''}`;
-      row.setAttribute('aria-pressed', watched.has(item.id));
-      row.setAttribute('aria-label', `Mark ${item.title} as watched`);
-      const indicator = document.createElement('span'); indicator.className = 'indicator'; indicator.setAttribute('aria-hidden', 'true');
-      function toggleWatched() {
-        const isWatched = !watched.has(item.id);
-        isWatched ? watched.add(item.id) : watched.delete(item.id);
-        row.classList.toggle('done', isWatched); row.setAttribute('aria-pressed', isWatched);
-        row.setAttribute('aria-label', `${isWatched ? 'Mark' : 'Unmark'} ${item.title} as watched`); save(); updateProgress();
-        if (isWatched) celebrate(item, indicator);
-      }
-      row.addEventListener('click', toggleWatched);
-      const title = document.createElement('div'); title.className = 'title'; title.textContent = item.title;
-      const meta = document.createElement('div'); meta.className = 'meta';
-      meta.innerHTML = `<span class="tag">${item.type}</span><span class="date">${item.release}</span>`;
-      row.append(indicator, title, meta); return row;
+
+    function saveAgentNameGeneric(name) {
+        const clean = name.trim() || 'Dhairya';
+        localStorage.setItem('mcu_agent_name', clean);
+        document.getElementById('agentNameDisplay').innerText = clean;
+        document.getElementById('settingsAgentNameInput').value = clean;
+        showToast(`Agent name updated to ${clean}`);
     }
-    function render() {
-      list.replaceChildren();
-      const ordered = [...data].sort((a,b) => a[`${view}Order`] - b[`${view}Order`]);
-      if (view === 'release') {
-        let phase = null;
-        ordered.forEach(item => {
-          if (item.phase !== phase) {
-            phase = item.phase;
-            const heading = document.createElement('div'); heading.className = 'phase'; heading.textContent = phase;
-            list.append(heading);
-          }
-          list.append(makeRow(item));
+
+    function startEditAgentName() {
+        const row = document.getElementById('agentNameEditRow');
+        const input = document.getElementById('agentNameInput');
+        input.value = document.getElementById('agentNameDisplay').innerText;
+        row.classList.remove('hidden');
+        row.classList.add('flex');
+        input.focus();
+    }
+
+    function saveAgentName() {
+        const input = document.getElementById('agentNameInput');
+        saveAgentNameGeneric(input.value);
+        const row = document.getElementById('agentNameEditRow');
+        row.classList.add('hidden');
+        row.classList.remove('flex');
+    }
+
+    function saveAgentNameFromSettings() {
+        const input = document.getElementById('settingsAgentNameInput');
+        saveAgentNameGeneric(input.value);
+    }
+
+    function toggleClearanceModal() {
+        const modal = document.getElementById('clearanceModal');
+        if (modal.classList.contains('hidden')) {
+            modal.classList.remove('hidden');
+            setTimeout(() => modal.classList.remove('opacity-0'), 10);
+        } else {
+            modal.classList.add('opacity-0');
+            setTimeout(() => modal.classList.add('hidden'), 300);
+        }
+    }
+
+    function toggleSettingsModal() {
+        const modal = document.getElementById('settingsModal');
+        if (modal.classList.contains('hidden')) {
+            modal.classList.remove('hidden');
+            setTimeout(() => modal.classList.remove('opacity-0'), 10);
+        } else {
+            modal.classList.add('opacity-0');
+            setTimeout(() => modal.classList.add('hidden'), 300);
+        }
+    }
+
+    const iconMap = { movie: 'movie', series: 'tv', animated: 'animation', shorts: 'theaters', special: 'celebration' };
+
+    function mediaFactsHTML(item) {
+        const fact = mediaFacts[item.id] || ['TBA', '—'];
+        return `<span class="inline-flex items-center gap-1 text-[10px] font-label-sm text-on-surface-variant"><span class="material-symbols-outlined text-[13px]">schedule</span>${fact[0]}</span><span class="inline-flex items-center gap-1 text-[10px] font-label-sm text-secondary"><span class="material-symbols-outlined text-[13px]">star</span>IMDb ${fact[1]}</span>`;
+    }
+
+    function cardClassName(item) {
+        return `item-card glass-panel rounded-lg p-5 flex items-center justify-between group ${item.watched ? 'watched' : ''} ${item.upcoming ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`;
+    }
+
+    function cardInnerHTML(item) {
+        const typeIcon = iconMap[item.type] || 'auto_awesome';
+        const typeLabel = item.type.toUpperCase();
+        return `
+            <div class="flex items-center gap-4">
+                <div class="relative">
+                    <div class="w-12 h-12 rounded-lg bg-surface-container-highest flex items-center justify-center border border-outline-variant/30 group-hover:bg-primary/20 transition-colors">
+                        <span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary">${typeIcon}</span>
+                    </div>
+                </div>
+                <div class="min-w-0">
+                    <h4 class="font-headline-md text-body-lg text-on-surface group-hover:text-primary transition-colors">${item.title}</h4>
+                    <div class="flex items-center gap-3 flex-wrap">
+                        <span class="text-[10px] font-label-sm px-2 py-0.5 rounded bg-surface-variant text-on-surface-variant border border-outline-variant/30">${typeLabel}</span>
+                        <span class="text-[10px] font-label-sm text-on-surface-variant opacity-60">${item.release}</span>
+                        <span class="text-[10px] font-label-sm text-secondary">CHRONO: #${item.chrono}</span>
+                        ${item.upcoming ? '<span class="text-[10px] font-label-sm px-2 py-0.5 rounded bg-error/10 text-error border border-error/30">UPCOMING</span>' : ''}
+                    </div>
+                    <div class="mt-2 flex items-center gap-3 flex-wrap border-t border-outline-variant/20 pt-2">
+                        ${mediaFactsHTML(item)}
+                    </div>
+                </div>
+            </div>
+            <div class="flex items-center">
+                 <div class="w-6 h-6 rounded-full border-2 ${item.watched ? 'bg-primary border-primary' : 'border-outline-variant'} flex items-center justify-center transition-all group-hover:border-primary">
+                    ${item.watched ? '<span class="material-symbols-outlined check-pop text-on-primary text-xs font-bold">check</span>' : ''}
+                 </div>
+            </div>
+        `;
+    }
+
+    function buildCard(item) {
+        const card = document.createElement('div');
+        card.id = `card-${item.id}`;
+        card.className = cardClassName(item);
+        card.onclick = () => toggleWatched(item.id);
+        card.innerHTML = cardInnerHTML(item);
+        return card;
+    }
+
+    function renderWatchlist() {
+        container.innerHTML = '';
+
+        let sortedData = [...mcuData];
+        if (currentSort === 'chronological') {
+            sortedData.sort((a, b) => a.chrono - b.chrono);
+        } else {
+            sortedData.sort((a, b) => a.releaseOrder - b.releaseOrder);
+        }
+
+        if (searchQuery) {
+            sortedData = sortedData.filter(item => {
+                const searchable = `${item.title} ${item.type} phase ${item.phase} ${item.release}`.toLowerCase();
+                return searchable.includes(searchQuery);
+            });
+        }
+
+        if (sortedData.length === 0) {
+            container.innerHTML = `
+                <div class="rounded-lg border border-outline-variant/40 bg-surface-container-low p-8 text-center">
+                    <span class="material-symbols-outlined text-secondary text-3xl">search_off</span>
+                    <h3 class="mt-3 font-headline-md text-on-surface">No matching intel</h3>
+                    <p class="mt-1 text-sm text-on-surface-variant">Try a title, type, release date, or phase number.</p>
+                </div>
+            `;
+            return;
+        }
+
+        if (currentSort === 'chronological') {
+            // Flat viewing order — no phase headers, since chronological order cuts across phases
+            const grid = document.createElement('div');
+            grid.className = 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 animate-fade-in-up';
+            sortedData.forEach(item => grid.appendChild(buildCard(item)));
+            container.appendChild(grid);
+            return;
+        }
+
+        const phases = [1, 2, 3, 4, 5, 6];
+
+        phases.forEach(phaseNum => {
+            const phaseItems = sortedData.filter(i => i.phase === phaseNum);
+            if (phaseItems.length === 0) return;
+
+            const phaseSection = document.createElement('section');
+            phaseSection.className = 'flex flex-col gap-6 animate-fade-in-up';
+
+            const phaseHeader = `
+                <div class="flex items-center gap-6">
+                    <h3 class="font-headline-xl text-on-surface whitespace-nowrap">PHASE ${phaseNum}</h3>
+                    <div class="h-px w-full bg-gradient-to-r from-primary/30 to-transparent"></div>
+                </div>
+            `;
+
+            const grid = document.createElement('div');
+            grid.className = 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4';
+
+            phaseItems.forEach(item => grid.appendChild(buildCard(item)));
+
+            phaseSection.innerHTML = phaseHeader;
+            phaseSection.appendChild(grid);
+            container.appendChild(phaseSection);
         });
-      } else ordered.forEach(item => list.append(makeRow(item)));
-      updateProgress();
     }
-    document.querySelectorAll('[data-view]').forEach(button => button.addEventListener('click', () => {
-      view = button.dataset.view;
-      document.querySelectorAll('[data-view]').forEach(b => b.classList.toggle('active', b === button));
-      render();
-    }));
-    function closeResetModal() { resetModal.classList.remove('show'); reset.focus(); }
-    function clearProgress() {
-      watched.clear(); save(); render();
-      toast.textContent = 'Progress reset — your next MCU run starts here.';
-      toast.classList.add('show');
-      clearTimeout(toastTimer);
-      toastTimer = setTimeout(() => toast.classList.remove('show'), 2500);
-      closeResetModal();
+
+    function toggleResetModal() {
+        const modal = document.getElementById('resetModal');
+        if (modal.classList.contains('hidden')) {
+            modal.classList.remove('hidden');
+            setTimeout(() => modal.classList.remove('opacity-0'), 10);
+        } else {
+            modal.classList.add('opacity-0');
+            setTimeout(() => modal.classList.add('hidden'), 300);
+        }
     }
-    reset.addEventListener('click', () => {
-      if (!watched.size) return;
-      resetModal.classList.add('show'); confirmReset.focus();
-    });
-    cancelReset.addEventListener('click', closeResetModal);
-    confirmReset.addEventListener('click', clearProgress);
-    resetModal.addEventListener('click', event => { if (event.target === resetModal) closeResetModal(); });
-    document.addEventListener('keydown', event => { if (event.key === 'Escape' && resetModal.classList.contains('show')) closeResetModal(); });
-    render();
-  </script>
+
+    function resetWatchlist() {
+        mcuData.forEach(item => item.watched = false);
+        localStorage.removeItem('mcu_watchlist_v3');
+        renderWatchlist();
+        updateProgress();
+        toggleResetModal();
+        showToast('Progress reset — your next MCU run starts here.');
+    }
+
+    // Run Init
+    window.addEventListener('DOMContentLoaded', init);
+
+    // Micro-interactions and Entrance Animations
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in-up {
+            animation: fadeInUp 0.6s ease-out forwards;
+        }
+    `;
+    document.head.appendChild(style);
+</script>
 </body>
 </html>
